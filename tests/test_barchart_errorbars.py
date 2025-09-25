@@ -37,4 +37,8 @@ def plot() -> Figure:
 
 
 def test() -> None:
-    assert_equality(plot, "test_barchart_errorbars_reference.tex")
+    try:
+        assert_equality(plot, __file__[:-3] + "_reference.tex")
+    except AssertionError:
+        # Try other output, which is the old output with Python 3.9 and below.
+        assert_equality(plot, __file__[:-3] + "_reference2.tex")
