@@ -21,9 +21,4 @@ def plot() -> Figure:
 
 
 def test() -> None:
-    try:
-        assert_equality(plot, __file__[:-3] + "_reference.tex")
-    except AssertionError:
-        # Try other output, which is the new output since Python 3.9.
-        # With Python 3.9 and above, legend will be at center right (which makes more sense).
-        assert_equality(plot, __file__[:-3] + "_reference2.tex")
+    assert_equality(plot, __file__[:-3] + "_reference.tex")
