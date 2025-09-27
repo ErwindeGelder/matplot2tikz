@@ -1,0 +1,63 @@
+\begin{tikzpicture}
+	
+	\definecolor{darkgray176}{RGB}{176,176,176}
+	\definecolor{lightgray204}{RGB}{204,204,204}
+	
+	\begin{axis}[
+		legend cell align={left},
+		legend style={
+			fill opacity=0.8,
+			draw opacity=1,
+			text opacity=1,
+			at={(0.03,0.97)},
+			anchor=north west,
+			draw=lightgray204
+		},
+		tick align=outside,
+		tick pos=left,
+		x grid style={darkgray176},
+		xmin=-0.5, xmax=10.5,
+		xtick style={color=black},
+		y grid style={darkgray176},
+		ymin=-0.5, ymax=10.5,
+		ytick style={color=black}
+		]
+		\addplot [semithick, blue]
+		table {%
+			0 0
+			2 2
+			4 4
+			6 6
+			8 8
+			10 10
+		};
+		\addlegendentry{Linear}
+	\end{axis}
+	
+	\begin{axis}[
+		legend to name=myLegend,
+		axis y line=right,
+		tick align=outside,
+		x grid style={darkgray176},
+		xmin=-0.5, xmax=10.5,
+		xtick pos=left,
+		xtick style={color=black},
+		y grid style={darkgray176},
+		ymin=-5, ymax=105,
+		ytick pos=right,
+		ytick style={color=black},
+		yticklabel style={anchor=west}
+		]
+		\addplot [semithick, red]
+		table {%
+			0 0
+			2 4
+			4 16
+			6 36
+			8 64
+			10 100
+		};
+		\addlegendentry{Quadratic}
+	\end{axis}
+	
+\end{tikzpicture}
