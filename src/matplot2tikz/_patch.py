@@ -114,7 +114,9 @@ def draw_patchcollection(data: TikzData, obj: Collection) -> list[str]:
     hatches = ensure_list(obj.get_hatch()) if obj.get_hatch() is not None else [None]
 
     paths = obj.get_paths()
-    for path, ec, fc, ls, lw, t, off, hatch in zip_modulo(paths, ecs, fcs, lss, lws, ts, offs, hatches):
+    for path, ec, fc, ls, lw, t, off, hatch in zip_modulo(
+        paths, ecs, fcs, lss, lws, ts, offs, hatches
+    ):
         draw_options = mypath.get_draw_options(
             data, mypath.LineData(obj=obj, ec=ec, fc=fc, ls=ls, lw=lw, hatch=hatch)
         )
