@@ -9,7 +9,7 @@ readme = "README.md"
 license = "MIT"
 keywords = ["latex", "tikz", "matplotlib", "graphics"]
 dynamic = ["version"]
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dependencies = [
   "matplotlib >= 1.4.0",
   "numpy",
@@ -23,7 +23,6 @@ authors = [
 ]
 classifiers=[
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",

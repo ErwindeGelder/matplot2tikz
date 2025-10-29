@@ -48,4 +48,9 @@ def assert_equality(  # type: ignore[no-untyped-def]
     this_dir = Path(__file__).resolve().parent
     with (this_dir / filename).open(encoding="utf-8") as f:
         reference = f.read()
+    try:
+        assert reference == code, filename + "\n" + _unidiff_output(reference, code)
+    except AssertionError:
+        with (this_dir / f"{filename[:-4]}_output.tex").open("w") as f:
+            f.write(code)
     assert reference == code, filename + "\n" + _unidiff_output(reference, code)
