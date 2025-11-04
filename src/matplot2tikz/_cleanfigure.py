@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import warnings
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -38,15 +38,15 @@ class CleanFigureData:
     target_resolution: int | list[int] | np.ndarray
     scale_precision: float
     data: np.ndarray = field(default_factory=initial_data)
-    visual_data: Optional[np.ndarray] = None
+    visual_data: np.ndarray | None = None
     x_lim: np.ndarray = field(default_factory=initial_axis_limits)
     y_lim: np.ndarray = field(default_factory=initial_axis_limits)
-    has_lines: Optional[bool] = None
-    has_markers: Optional[bool] = None
+    has_lines: bool | None = None
+    has_markers: bool | None = None
 
 
 def clean_figure(
-    fig: Optional[FigureBase] = None,
+    fig: FigureBase | None = None,
     target_resolution: int | list[int] | np.ndarray = 600,
     scale_precision: float = 1.0,
 ) -> None:

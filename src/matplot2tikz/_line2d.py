@@ -4,7 +4,7 @@ import contextlib
 import datetime
 from collections.abc import Iterable, Sized
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 import numpy as np
 from matplotlib.dates import num2date
@@ -26,27 +26,30 @@ if TYPE_CHECKING:
 class MarkerData:
     marker: str | None
     mark_options: list
-    fc: Optional[
+    fc: (
         str
         | tuple[float, float, float]
         | tuple[float, float, float, float]
         | tuple[str | tuple[float, float, float], float]
         | tuple[tuple[float, float, float, float], float]
-    ] = None  # facecolor
-    ec: Optional[
+        | None
+    ) = None  # facecolor
+    ec: (
         str
         | tuple[float, float, float]
         | tuple[float, float, float, float]
         | tuple[str | tuple[float, float, float], float]
         | tuple[tuple[float, float, float, float], float]
-    ] = None  # edgecolor
-    lc: Optional[
+        | None
+    ) = None  # edgecolor
+    lc: (
         str
         | tuple[float, float, float]
         | tuple[float, float, float, float]
         | tuple[str | tuple[float, float, float], float]
         | tuple[tuple[float, float, float, float], float]
-    ] = None  # linecolor
+        | None
+    ) = None  # linecolor
 
 
 def draw_line2d(data: TikzData, obj: Line2D) -> list[str]:
@@ -290,7 +293,9 @@ def _table(data: TikzData, obj: Line2D) -> list[str]:
         data.current_axis_options.add("unbounded coords=jump")
 
     ff = data.float_format
-    plot_table = [f"{x:{xformat}}{col_sep}{y:{ff}}{table_row_sep}" for x, y in zip(xdata, ydata)]
+    plot_table = [
+        f"{x:{xformat}}{col_sep}{y:{ff}}{table_row_sep}" for x, y in zip(xdata, ydata, strict=True)
+    ]
 
     min_extern_length = 3
 

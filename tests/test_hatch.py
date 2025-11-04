@@ -35,7 +35,7 @@ def plot() -> Figure:
     ax2.set_xticks([1.5, 2.5, 3.5, 4.5])
 
     patterns = ("-", "+", "x", "\\", "*", "o", "O", ".")
-    for bar, pattern in zip(bars, patterns):
+    for bar, pattern in zip(bars, patterns, strict=True):
         bar.set_hatch(pattern)
 
     ax3.fill([1, 3, 3, 1], [1, 1, 2, 2], fill=False, hatch="\\", zorder=1, label="Square")

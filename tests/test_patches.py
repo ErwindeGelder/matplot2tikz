@@ -24,7 +24,7 @@ def plot() -> Figure:
     y = rng.random(size=n_points)
     radii = 0.1 * rng.random(size=n_points)
     patches: list[Patch] = []
-    for x1, y1, r in zip(x, y, radii):
+    for x1, y1, r in zip(x, y, radii, strict=True):
         circle = Circle((x1, y1), r)
         patches.append(circle)
 
@@ -36,7 +36,7 @@ def plot() -> Figure:
     radii = 0.1 * rng.random(size=n_points)
     theta1 = 360.0 * rng.random(size=n_points)
     theta2 = 360.0 * rng.random(size=n_points)
-    for x1, y1, r, t1, t2 in zip(x, y, radii, theta1, theta2):
+    for x1, y1, r, t1, t2 in zip(x, y, radii, theta1, theta2, strict=True):
         wedge = Wedge((x1, y1), r, t1, t2)
         patches.append(wedge)
 

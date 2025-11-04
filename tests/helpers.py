@@ -1,8 +1,8 @@
 """Helper functions for running the tests."""
 
 import difflib
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 
 import matplotlib.pyplot as plt
 from matplotlib.artist import Artist
