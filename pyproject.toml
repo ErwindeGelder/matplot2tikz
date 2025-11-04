@@ -27,6 +27,7 @@ classifiers=[
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
 ]
 
 # Enables the usage of setuptools_scm
@@ -61,7 +62,7 @@ src = ["src"]
 extend-exclude = [
     "conf.py",
 ]
-target-version = "py39"
+target-version = "py310"
 lint.select = ["ALL"]
 lint.ignore = [
     "COM812",   # Conflicts with the formatter
