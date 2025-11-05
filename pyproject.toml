@@ -113,5 +113,8 @@ addopts = """
 # Maps coverage measured in site-packages to source files in src
 source = ["src/", ".tox/*/lib/python*/site-packages/"]
 
+[tool.coverage.run]
+source = ["matplot2tikz"]
+
 [tool.coverage.html]
 directory = "reports/coverage_html"
