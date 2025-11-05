@@ -114,7 +114,9 @@ def draw_patchcollection(data: TikzData, obj: Collection) -> list[str]:
     hatches = ensure_list(obj.get_hatch()) if obj.get_hatch() is not None else [None]
 
     paths = obj.get_paths()
-    for path, ec, fc, ls, lw, t, off, hatch in zip_modulo(paths, ecs, fcs, lss, lws, ts, offs, hatches):
+    for path, ec, fc, ls, lw, t, off, hatch in zip_modulo(
+        paths, ecs, fcs, lss, lws, ts, offs, hatches
+    ):
         draw_options = mypath.get_draw_options(
             data, mypath.LineData(obj=obj, ec=ec, fc=fc, ls=ls, lw=lw, hatch=hatch)
         )
@@ -151,7 +153,9 @@ def _draw_rectangle(data: TikzData, obj: Rectangle, draw_options: list) -> list[
     # "_nolegend_". See <https://stackoverflow.com/q/35881290/353337>.
     if isinstance(obj.axes, Axes):
         handles, labels = obj.axes.get_legend_handles_labels()
-        labels_found = [label for h, label in zip(handles, labels) if obj in h.get_children()]
+        labels_found = [
+            label for h, label in zip(handles, labels, strict=True) if obj in h.get_children()
+        ]
         if len(labels_found) == 1:
             label = labels_found[0]
 

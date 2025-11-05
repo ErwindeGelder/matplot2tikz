@@ -3,7 +3,7 @@ from __future__ import annotations
 import contextlib
 from collections.abc import Iterable, Sequence, Sized
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 import numpy as np
 from matplotlib.dates import DateConverter, num2date
@@ -27,15 +27,15 @@ from ._util import get_legend_text, has_legend
 @dataclass
 class LineData:
     obj: Collection | Patch
-    ec: Optional[str | tuple] = None  # edgecolor
-    ec_name: Optional[str] = None
-    ec_rgba: Optional[np.ndarray] = None
-    fc: Optional[str | tuple] = None  # facecolor
-    fc_name: Optional[str] = None
-    fc_rgba: Optional[np.ndarray] = None
-    ls: Optional[str | tuple[float, Sequence[float] | None]] = None  # linestyle
-    lw: Optional[float] = None  # linewidth
-    hatch: Optional[str] = None
+    ec: str | tuple | None = None  # edgecolor
+    ec_name: str | None = None
+    ec_rgba: np.ndarray | None = None
+    fc: str | tuple | None = None  # facecolor
+    fc_name: str | None = None
+    fc_rgba: np.ndarray | None = None
+    ls: str | tuple[float, Sequence[float] | None] | None = None  # linestyle
+    lw: float | None = None  # linewidth
+    hatch: str | None = None
 
 
 @dataclass
@@ -46,18 +46,18 @@ class PathCollectionData:
     labels: list
     table_options: list
     is_contour: bool
-    marker: Optional[str] = None
+    marker: str | None = None
     is_filled: bool = False
-    add_individual_color_code: Optional[bool] = False
-    legend_text: Optional[str] = None
+    add_individual_color_code: bool | None = False
+    legend_text: str | None = None
 
 
 def draw_path(
     data: TikzData,
     path: Path,
-    draw_options: Optional[list[str]] = None,
+    draw_options: list[str] | None = None,
     *,
-    simplify: Optional[bool] = None,
+    simplify: bool | None = None,
 ) -> tuple[str, bool]:
     """Adds code for drawing an ordinary path in PGFPlots (TikZ)."""
     # For some reasons, matplotlib sometimes adds void paths which consist of
@@ -377,7 +377,7 @@ def _draw_pathcollection_draw_contour(path: Path, data: TikzData, pcd: PathColle
         dd_strings: list[list[str]] = []
         if not isinstance(codes, Iterable):
             return  # We cannot draw a path
-        for row, code in zip(dd, codes):
+        for row, code in zip(dd, codes, strict=True):
             if code == 1:  # MOVETO
                 # Inserts a newline to trigger "move to" in pgfplots
                 dd_strings.append([])
@@ -534,7 +534,7 @@ def mpl_linewidth2pgfp_linewidth(data: TikzData, line_width: float) -> str | Non
 def mpl_linestyle2pgfplots_linestyle(
     data: TikzData,
     line_style: str | tuple[float, Sequence[float] | None],
-    line: Optional[Line2D] = None,
+    line: Line2D | None = None,
 ) -> str | None:
     """Translates a line style of matplotlib to the corresponding style in PGFPlots."""
     # linestyle is a string or dash tuple. Legal string values are
@@ -554,7 +554,7 @@ def mpl_linestyle2pgfplots_linestyle(
         pgf_line_style += " ".join(
             [
                 f"on {ls_on:{ff}}pt off {ls_off:{ff}}pt"
-                for ls_on, ls_off in zip(line_style[1][::2], line_style[1][1::2])
+                for ls_on, ls_off in zip(line_style[1][::2], line_style[1][1::2], strict=True)
             ]
         )
         return pgf_line_style
@@ -574,7 +574,8 @@ def mpl_linestyle2pgfplots_linestyle(
             lst.append(
                 "dash pattern="
                 + " ".join(
-                    f"on {a:{ff}}pt off {b:{ff}}pt" for a, b in zip(dash_seq[0::2], dash_seq[1::2])
+                    f"on {a:{ff}}pt off {b:{ff}}pt"
+                    for a, b in zip(dash_seq[0::2], dash_seq[1::2], strict=True)
                 )
             )
 

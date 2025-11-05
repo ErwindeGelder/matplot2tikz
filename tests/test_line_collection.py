@@ -42,7 +42,9 @@ def plot() -> Figure:
 
     # Make a sequence of x,y pairs
     line_segments = LineCollection(
-        [list(zip(x, y)) for y in ys], linewidths=(0.5, 1, 1.5, 2), linestyles="dashdot"
+        [list(zip(x, y, strict=True)) for y in ys],
+        linewidths=(0.5, 1, 1.5, 2),
+        linestyles="dashdot",
     )
     line_segments.set_array(x)
     ax.add_collection(line_segments)

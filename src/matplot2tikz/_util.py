@@ -36,7 +36,7 @@ def get_legend_text(obj: Line2D | PathCollection) -> str | None:
     values = [t.get_text() for t in leg.texts]
 
     label = obj.get_label()
-    d = dict(zip(keys, values))
+    d = dict(zip(keys, values, strict=True))
     if label in d:
         return d[label]
 

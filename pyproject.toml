@@ -9,7 +9,7 @@ readme = "README.md"
 license = "MIT"
 keywords = ["latex", "tikz", "matplotlib", "graphics"]
 dynamic = ["version"]
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dependencies = [
   "matplotlib >= 1.4.0",
   "numpy",
@@ -23,11 +23,11 @@ authors = [
 ]
 classifiers=[
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
 ]
 
 # Enables the usage of setuptools_scm
@@ -43,6 +43,7 @@ test = [
     "pytest-cov>=6.0.0",
     "coverage[toml]>=7.0.0",
     "typeguard>=4.4.0",
+    "pandas",
 ]
 dev = [
     "tox",
@@ -61,7 +62,7 @@ src = ["src"]
 extend-exclude = [
     "conf.py",
 ]
-target-version = "py39"
+target-version = "py310"
 lint.select = ["ALL"]
 lint.ignore = [
     "COM812",   # Conflicts with the formatter
