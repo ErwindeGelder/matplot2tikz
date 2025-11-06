@@ -33,7 +33,10 @@ builtin_colors = {
 
 
 def _get_closest_colour_name(rgb: np.ndarray) -> tuple[str, int]:
-    wnames: list[str] = webcolors.names("css3")
+    try:
+        wnames: list[str] = webcolors.names("css3")
+    except AttributeError:  # For older versions of webcolors
+        wnames = sorted(webcolors.CSS3_NAMES_TO_HEX.keys())
     match = wnames[0]
     mindiff = 195076  # = 255**2 * 3 + 1 (maximum difference possible + 1)
     for name in wnames:
