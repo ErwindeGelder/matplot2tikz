@@ -260,7 +260,7 @@ For contributing, follow these steps:
    successful. Run `tox`. This does a linting check and runs all test scripts. To manually perform 
    these steps, use the following commands:
    1. Run `tox -e lint`. You can do the linting commands manually using:
-      1. (One time) `uv pip install -r requirements-lint.txt`
+      1. (One time) `uv pip install -r requirements-lint.txtAS`
       2. `ruff format . --check` (remove the `--check` flag to let `ruff` do the formatting)
       3. `ruff check .`
       4. `mypy .`

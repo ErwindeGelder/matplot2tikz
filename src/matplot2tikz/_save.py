@@ -24,7 +24,7 @@ from typing_extensions import NotRequired, Unpack
 if TYPE_CHECKING:
     from matplotlib.artist import Artist
 
-from . import _axes, _legend, _line2d, _patch, _path, _text
+from . import _axes, _legend, _line2d, _patch, _path, _text, _util
 from . import _image as img
 from . import _quadmesh as qmsh
 from .__about__ import __version__
@@ -385,7 +385,28 @@ def _recurse(data: TikzData, obj: Artist) -> list:
     Content is returned.
     """
     content = _ContentManager()
+
     for child in obj.get_children():
+        # Filter out the Figure's background patch
+        if (
+            isinstance(obj, Figure)
+            and isinstance(child, Patch)
+            and child is obj.patch
+            and child.get_facecolor() == (1.0, 1.0, 1.0, 1.0)  # White face color
+            and child.get_linewidth() == 0.0
+        ) or not child.get_visible():
+            continue
+
+        # Filter out the Axes' background patch
+        if (
+            isinstance(obj, Axes)
+            and isinstance(child, Patch)
+            and child is obj.patch
+            and child.get_facecolor() == (1.0, 1.0, 1.0, 1.0)  # White face color
+            and child.get_linewidth() == 0.0
+        ) or not child.get_visible():
+            continue
+
         # Some patches are Spines, too; skip those entirely.
         # See <https://github.com/nschloe/tikzplotlib/issues/277>.
         if isinstance(child, (Spine, XAxis, YAxis)):
@@ -432,6 +453,24 @@ def _process_axes(data: TikzData, obj: Axes, content: _ContentManager) -> None:
 
     # Run through the child objects, gather the content.
     children_content = _recurse(data, obj)
+
+    fig = obj.figure
+    if obj == fig.axes[0]:
+        for other_ax in fig.axes:
+            if other_ax == obj:
+                continue
+            for child in other_ax.get_children():
+                legend_text = _util.get_legend_text(child)
+                if (
+                    legend_text is not None
+                    and hasattr(child, "axes")
+                    and child.axes.get_legend() is None
+                ):
+                    plot_label = child.get_label() + "_plot"
+                    children_content.append(
+                        f"\\addlegendimage{{/pgfplots/refstyle={plot_label}}}\n"
+                    )
+                    children_content.append(f"\\addlegendentry{{{legend_text}}}\n")
 
     # populate content and add axis environment if desired
     if data.add_axis_environment:

@@ -24,7 +24,17 @@ def get_legend_text(obj: Line2D | PathCollection) -> str | None:
     """Check if line is in legend."""
     if obj.axes is None:
         return None
+
     leg = obj.axes.get_legend()
+
+    if leg is None:
+        fig = obj.axes.figure
+        for ax in fig.axes:
+            other_leg = ax.get_legend()
+            if other_leg is not None:
+                leg = other_leg
+                break
+
     if leg is None:
         return None
 
