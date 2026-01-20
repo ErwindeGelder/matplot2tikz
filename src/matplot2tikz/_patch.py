@@ -147,13 +147,9 @@ def _draw_rectangle(data: TikzData, obj: Rectangle, draw_options: list) -> list[
     # Try to resolve a more useful label if it's "_nolegend_"
     if isinstance(obj.axes, Axes):
         handles, labels = obj.axes.get_legend_handles_labels()
-<<<<<<< HEAD
-        labels_found = [lab for h, lab in zip(handles, labels) if obj in h.get_children()]
-=======
         labels_found = [
             label for h, label in zip(handles, labels, strict=True) if obj in h.get_children()
         ]
->>>>>>> upstream/main
         if len(labels_found) == 1:
             label = labels_found[0]
 
