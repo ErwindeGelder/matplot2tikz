@@ -5,30 +5,26 @@ on:
 
 jobs:
   test:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest]
-        python-version: ['3.9', '3.10', '3.11', '3.12', '3.13']
-        include:
-          - python-version: '3.9'
-            os: ubuntu-latest
-            tox-env: lint
+    # Run on a single, standard runner
+    runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
-    - name: Set up Python ${{ matrix.python-version }}
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python 3.11
+      # We just need one modern Python version to run the 'tox' command itself.
       uses: actions/setup-python@v5
       with:
-        python-version: ${{ matrix.python-version }}
-    - name: Install dependencies
+        python-version: "3.11"
+
+    - name: Install Tox and tox-uv
+      # Install the required tools into the workflow runner environment
       run: |
-        python -m pip install --upgrade pip
-        pip install tox tox-gh-actions
-    - name: Test with tox
+        pip install --upgrade pip
+        pip install tox tox-uv
+
+    - name: Run All Tox Environments
+      # The 'tox' command executes the full matrix (py310, py311, etc.)
+      # defined in tox.ini. tox-uv handles the fast installation.
       run: tox
-      env:
-        # Pass the current matrix Python version to tox-gh-actions
-        # so it can filter the tox environments
-        TOX_GH_ACTIONS_MATRIX_PYTHON_VERSION: ${{ matrix.python-version }}
-        TOX_GH_ACTIONS_TOX_ENV: ${{ matrix.tox-env || '' }}

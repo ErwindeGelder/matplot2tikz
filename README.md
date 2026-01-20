@@ -1,3 +1,35 @@
+
+<div align="right">
+  <details>
+    <summary >🌐 Language</summary>
+    <div>
+      <div align="center">
+        <a href="https://openaitx.github.io/view.html?user=ErwindeGelder&project=matplot2tikz&lang=en">English</a>
+        | <a href="https://openaitx.github.io/view.html?user=ErwindeGelder&project=matplot2tikz&lang=zh-CN">简体中文</a>
+        | <a href="https://openaitx.github.io/view.html?user=ErwindeGelder&project=matplot2tikz&lang=zh-TW">繁體中文</a>
+        | <a href="https://openaitx.github.io/view.html?user=ErwindeGelder&project=matplot2tikz&lang=ja">日本語</a>
+        | <a href="https://openaitx.github.io/view.html?user=ErwindeGelder&project=matplot2tikz&lang=ko">한국어</a>
+        | <a href="https://openaitx.github.io/view.html?user=ErwindeGelder&project=matplot2tikz&lang=hi">हिन्दी</a>
+        | <a href="https://openaitx.github.io/view.html?user=ErwindeGelder&project=matplot2tikz&lang=th">ไทย</a>
+        | <a href="https://openaitx.github.io/view.html?user=ErwindeGelder&project=matplot2tikz&lang=fr">Français</a>
+        | <a href="https://openaitx.github.io/view.html?user=ErwindeGelder&project=matplot2tikz&lang=de">Deutsch</a>
+        | <a href="https://openaitx.github.io/view.html?user=ErwindeGelder&project=matplot2tikz&lang=es">Español</a>
+        | <a href="https://openaitx.github.io/view.html?user=ErwindeGelder&project=matplot2tikz&lang=it">Italiano</a>
+        | <a href="https://openaitx.github.io/view.html?user=ErwindeGelder&project=matplot2tikz&lang=ru">Русский</a>
+        | <a href="https://openaitx.github.io/view.html?user=ErwindeGelder&project=matplot2tikz&lang=pt">Português</a>
+        | <a href="https://openaitx.github.io/view.html?user=ErwindeGelder&project=matplot2tikz&lang=nl">Nederlands</a>
+        | <a href="https://openaitx.github.io/view.html?user=ErwindeGelder&project=matplot2tikz&lang=pl">Polski</a>
+        | <a href="https://openaitx.github.io/view.html?user=ErwindeGelder&project=matplot2tikz&lang=ar">العربية</a>
+        | <a href="https://openaitx.github.io/view.html?user=ErwindeGelder&project=matplot2tikz&lang=fa">فارسی</a>
+        | <a href="https://openaitx.github.io/view.html?user=ErwindeGelder&project=matplot2tikz&lang=tr">Türkçe</a>
+        | <a href="https://openaitx.github.io/view.html?user=ErwindeGelder&project=matplot2tikz&lang=vi">Tiếng Việt</a>
+        | <a href="https://openaitx.github.io/view.html?user=ErwindeGelder&project=matplot2tikz&lang=id">Bahasa Indonesia</a>
+        | <a href="https://openaitx.github.io/view.html?user=ErwindeGelder&project=matplot2tikz&lang=as">অসমীয়া</
+      </div>
+    </div>
+  </details>
+</div>
+
 # matplot2tikz
 The artist formerly known as <em>tikzplotlib</em>.
 
@@ -219,35 +251,31 @@ For contributing, follow these steps:
 1. Download the git repository, e.g., using
    `git clone git@github.com:ErwindeGelder/matplot2tikz.git`.
 2. Create a virtual environment, e.g., using `python -m venv venv`.
-3. Activate the virtual environment (e.g., on Windows, `venv\Scripts\activate.bat`).
-4. Install the necessary libraries using `pip install -e .[dev]`.
+3. Activate the virtual environment (e.g., on Windows, `venv\Scripts\activate`).
+4. Install `uv` using `pip install uv` and then `tox-uv` using `uv pip install tox-uv`.
 5. The main branch is protected, meaning that you cannot directly push changes to this branch. 
    Therefore, if you want to make changes, do so in a seperate branch. For example, you can create 
    a new branch using `git checkout -b feature/my_awesome_new_feature`.
 6. Before pushing changes, ensure that the code adheres to the linting rules and that the tests are 
-   successful. To run the linting and testing, tox first needs to know where it can find the
-   different Python versions that are supported. One way to do so is by making use of pyenv or 
-   pyenv-win. Note that you only need to do this once for a single machine.
-7. Run `tox`. This does a linting check and runs all test scripts. To manually perform these steps,
-   use the following commands (note that to ensure the same output is generated, Python 3.9 is used 
-   in step 2 above):
-   1. Run `tox -e lint`. If issues arise, fix them. You can do the linting commands manually 
-      using:
-      1. `ruff format . --check` (remove the `--check` flag to let `ruff` do the formatting)
-      2. `ruff check .`
-      3. `mypy .`
-   2. Run `tox -e py39`.
-   3. Run `tox -e py310`.
-   4. Run `tox -e py311`.
-   5. Run `tox -e py312`.
-   6. Run `tox -e py313`.
+   successful. Run `tox`. This does a linting check and runs all test scripts. To manually perform 
+   these steps, use the following commands:
+   1. Run `tox -e lint`. You can do the linting commands manually using:
+      1. (One time) `uv pip install -r requirements-lint.txt`
+      2. `ruff format . --check` (remove the `--check` flag to let `ruff` do the formatting)
+      3. `ruff check .`
+      4. `mypy .`
+   2. Run `tox -e py310`.
+   3. Run `tox -e py311`.
+   4. Run `tox -e py312`.
+   5. Run `tox -e py313`.
+   6. Run `tox -e py314`.
    7. Run `tox -e combine-test-reports`
-8. Check if the tests covered everything using the coverage report in 
+7. Check if the tests covered everything using the coverage report in 
    `/reports/coverage_html/index.html`.
 
    NOTE: Currently, now all code is covered. Ideally, all code is covered, but for now, ensure that 
    all *new* code is covered by the testing.
-9. Push changes to GitHub. If everything is OK and you want to merge your changes to the `main`
+8. Push changes to GitHub. If everything is OK and you want to merge your changes to the `main`
    branch, create a pull request.
    Ideally, there is at least one reviewer who reviews the pull request before the merge.
 

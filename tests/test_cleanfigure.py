@@ -222,7 +222,7 @@ class TestPlottypes:
                 "Cleaning Line Collections (scatter plot) is not supported yet.",
             )
             assert len(record) == len(warnings)
-            for record_warning, warning in zip(record, warnings):
+            for record_warning, warning in zip(record, warnings, strict=True):
                 assert str(record_warning.message) == warning
 
         plt.close("all")
@@ -284,7 +284,7 @@ class TestPlottypes:
             for _ in zs:
                 ys = rng.random(size=len(xs))
                 ys[0], ys[-1] = 0, 0
-                verts.append(list(zip(xs, ys)))
+                verts.append(list(zip(xs, ys, strict=True)))
 
             poly = PolyCollection(verts, facecolors=[cc("r"), cc("g"), cc("b"), cc("y")])
             poly.set_alpha(0.7)
@@ -307,7 +307,7 @@ class TestPlottypes:
             ax: axes3d.Axes3D = fig.add_subplot(111, projection="3d")
 
             rng = np.random.default_rng(42)
-            for c, z in zip(["r", "g", "b", "y"], [30, 20, 10, 0]):
+            for c, z in zip(["r", "g", "b", "y"], [30, 20, 10, 0], strict=True):
                 xs = np.arange(20)
                 ys = rng.random(size=20)
 
@@ -492,7 +492,7 @@ class TestSubplots:
         with plt.rc_context(rc=RC_PARAMS):
             fig, axes = plt.subplots(2, 2, figsize=(5, 5))
             plotstyles = [("-", "o"), ("-", "None"), ("None", "o"), ("--", "x")]
-            for ax, style in zip(axes.ravel(), plotstyles):
+            for ax, style in zip(axes.ravel(), plotstyles, strict=True):
                 ax.plot(x, y, linestyle=style[0], marker=style[1])
                 ax.set_ylim([20, 80])
                 ax.set_xlim([20, 80])

@@ -12,7 +12,7 @@ mpl.use("Agg")
 
 
 def plot() -> None:
-    fig, axes = plt.subplots()
+    _, axes = plt.subplots()
     axes.set_yscale("log")
     axes.set_ylim(0.002, 200)
     axes.bar([1, 2, 3, 4, 5], [0.01, 0.1, 1, 10, 100])
