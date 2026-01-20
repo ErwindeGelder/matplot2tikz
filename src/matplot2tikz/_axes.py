@@ -607,7 +607,7 @@ def _is_label_required(ticks: list | np.ndarray, ticklabels: list) -> bool:
 
     If one of the labels is, then all of them must appear in the TikZ plot.
     """
-    for tick, ticklabel in zip(ticks, ticklabels):
+    for tick, ticklabel in zip(ticks, ticklabels, strict=False):
         # store the label anyway
         label = ticklabel.get_text()
 
