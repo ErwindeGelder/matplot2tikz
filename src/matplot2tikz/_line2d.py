@@ -90,7 +90,7 @@ def draw_line2d(data: TikzData, obj: Line2D) -> list[str]:
     if legend_text is not None and primitive_legend is not None:
         content.append(f"\\addlegendentry{{{legend_text}}}\n")
     elif legend_text is not None and primitive_legend is None:
-        content.append(f"\\label{{{legend_text + "_plot"}}}\n")
+        content.append(f"\\label{{{legend_text + '_plot'}}}\n")
 
     return content
 
