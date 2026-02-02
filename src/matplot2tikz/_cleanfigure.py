@@ -544,7 +544,7 @@ def _move_points_closer(x_lim: np.ndarray, y_lim: np.ndarray, data: np.ndarray) 
     """
     # Calculate the extension of the extended box
     # (x_width not important for clipping, as it is already dealt with elsewhere (maybe by matplotlib when lim() occurs))
-    #x_width = x_lim[1] - x_lim[0] 
+    # x_width = x_lim[1] - x_lim[0]
     y_width = y_lim[1] - y_lim[0]
 
     # Don't choose the larger box too large to make sure that the values inside

@@ -68,7 +68,7 @@ def draw_line2d(data: TikzData, obj: Line2D) -> list[str]:
 
     if len(xdata) == 0:
         return []
-    
+
     primitive_legend = obj.axes.get_legend()
 
     # Get several plot options

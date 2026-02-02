@@ -390,40 +390,31 @@ def _recurse(data: TikzData, obj: Artist) -> list:
     for child in obj.get_children():
         # Some patches are Spines, too; skip those entirely.
         # See <https://github.com/nschloe/tikzplotlib/issues/277>.
-
+        
         # Filter out the Figure's background patch
         if (
-            (isinstance(obj, Figure)
+            isinstance(obj, Figure)
             and isinstance(child, Patch)
             and child is obj.patch
-            and child.get_facecolor() == (1.0, 1.0, 1.0, 1.0) # White face color
-            #and (child.get_edgecolor() is None or all(isclose(child.get_edgecolor(), (0.0, 0.0, 0.0, 0.0)))) # No edge color
-            and child.get_linewidth() == 0.0)
-            or not child.get_visible()
-        ):
-            if hasattr(child, "get_edgecolor") and not (child.get_edgecolor() is None or all(isclose(child.get_edgecolor(), (0.0, 0.0, 0.0, 0.0)))):
-                print(child.get_edgecolor())
-                print(child.get_edgecolor() == (0.0, 0.0, 0.0, 0.0)) # No edge color
+            and child.get_facecolor() == (1.0, 1.0, 1.0, 1.0)  # White face color
+            and child.get_linewidth() == 0.0
+        ) or not child.get_visible():
             continue
 
-        
         # Filter out the Axes' background patch
-        
+
         if (
-            (isinstance(obj, Axes)
+            isinstance(obj, Axes)
             and isinstance(child, Patch)
             and child is obj.patch
-            and child.get_facecolor() == (1.0, 1.0, 1.0, 1.0) # White face color
-            #and (child.get_edgecolor() is None or all(isclose(child.get_edgecolor(), (0.0, 0.0, 0.0, 0.0)))) # No edge color
-            and child.get_linewidth() == 0.0)
-            or not child.get_visible()
-        ):
+            and child.get_facecolor() == (1.0, 1.0, 1.0, 1.0)  # White face color
+            and child.get_linewidth() == 0.0
+        ) or not child.get_visible():
             continue
-
 
         if isinstance(child, (Spine, XAxis, YAxis)):
             continue
-        
+
         if isinstance(child, Axes):
             _process_axes(data, child, content)
 
@@ -460,7 +451,7 @@ def _process_axes(data: TikzData, obj: Axes, content: _ContentManager) -> None:
     # add extra axis options
     if data.extra_axis_parameters:
         data.current_axis_options.update(data.extra_axis_parameters)
-            
+
     data.current_mpl_axes = obj
 
     # Run through the child objects, gather the content.
@@ -473,9 +464,15 @@ def _process_axes(data: TikzData, obj: Axes, content: _ContentManager) -> None:
                 continue
             for child in other_ax.get_children():
                 legend_text = _util.get_legend_text(child)
-                if legend_text is not None and hasattr(child, "axes") and child.axes.get_legend() is None:
+                if (
+                    legend_text is not None
+                    and hasattr(child, "axes")
+                    and child.axes.get_legend() is None
+                ):
                     plot_label = child.get_label() + "_plot"
-                    children_content.append(f"\\addlegendimage{{/pgfplots/refstyle={plot_label}}}\n")
+                    children_content.append(
+                        f"\\addlegendimage{{/pgfplots/refstyle={plot_label}}}\n"
+                    )
                     children_content.append(f"\\addlegendentry{{{legend_text}}}\n")
 
     # populate content and add axis environment if desired

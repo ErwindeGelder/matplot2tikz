@@ -1,0 +1,72 @@
+\begin{tikzpicture}
+
+\definecolor{darkgray176}{RGB}{176,176,176}
+\definecolor{lightgray204}{RGB}{204,204,204}
+
+\begin{axis}[
+legend cell align={left},
+legend style={
+  fill opacity=0.8,
+  draw opacity=1,
+  text opacity=1,
+  at={(0.03,0.97)},
+  anchor=north west,
+  draw=lightgray204
+},
+tick align=outside,
+tick pos=left,
+x grid style={darkgray176},
+xmin=-0.5, xmax=10.5,
+xtick style={color=black},
+y grid style={darkgray176},
+ymin=-0.5, ymax=10.5,
+ytick style={color=black}
+]
+\addplot [semithick, blue]
+table {%
+0 0
+1.11111111111111 1.11111111111111
+2.22222222222222 2.22222222222222
+3.33333333333333 3.33333333333333
+4.44444444444444 4.44444444444444
+5.55555555555556 5.55555555555556
+6.66666666666667 6.66666666666667
+7.77777777777778 7.77777777777778
+8.88888888888889 8.88888888888889
+10 10
+};
+\addlegendentry{Linear}
+\addlegendimage{/pgfplots/refstyle=Quadratic_plot}
+\addlegendentry{Quadratic}
+\end{axis}
+
+\begin{axis}[
+axis y line=right,
+tick align=outside,
+x grid style={darkgray176},
+xmin=-0.5, xmax=10.5,
+xtick pos=left,
+xtick style={color=black},
+y grid style={darkgray176},
+ymin=-5, ymax=105,
+ytick pos=right,
+ytick style={color=black},
+yticklabel style={anchor=west}
+]
+\addplot [semithick, red]
+table {%
+0 0
+1.11111111111111 1.23456790123457
+2.22222222222222 4.93827160493827
+3.33333333333333 11.1111111111111
+4.44444444444444 19.7530864197531
+5.55555555555556 30.8641975308642
+6.66666666666667 44.4444444444444
+7.77777777777778 60.4938271604938
+8.88888888888889 79.0123456790124
+10 100
+};
+\label{Quadratic_plot}
+\end{axis}
+
+\end{tikzpicture}

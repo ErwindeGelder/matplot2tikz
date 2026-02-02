@@ -140,11 +140,17 @@ def _draw_polygon(data: TikzData, obj: Patch, draw_options: list) -> list[str]:
 
 
 def _draw_rectangle(data: TikzData, obj: Rectangle, draw_options: list) -> list[str]:
-    # Skip the Axes background rectangle, which is always white (0,0)-(1,1)
-
+    """Return the PGFPlots code for rectangles."""
+    # Objects with labels are plot objects (from bar charts, etc).  Even those without
+    # labels explicitly set have a label of "_nolegend_".  Everything else should be
+    # skipped because they likely correspong to axis/legend objects which are handled by
+    # PGFPlots
     label = obj.get_label()
+    if label == "":
+        return []
 
-    # Try to resolve a more useful label if it's "_nolegend_"
+    # Get actual label, bar charts by default only give rectangles labels of
+    # "_nolegend_". See <https://stackoverflow.com/q/35881290/353337>.
     if isinstance(obj.axes, Axes):
         handles, labels = obj.axes.get_legend_handles_labels()
         labels_found = [
@@ -156,7 +162,9 @@ def _draw_rectangle(data: TikzData, obj: Rectangle, draw_options: list) -> list[
     left_lower_x = obj.get_x()
     left_lower_y = obj.get_y()
 
-    # Handle log-scale bar plots
+    # If we are dealing with a bar plot, left_lower_y will be 0. This is a problem if the y-scale is
+    # logarithmic (see https://github.com/ErwindeGelder/matplot2tikz/issues/25)
+    # To resolve this, the lower y limit will be used as lower_left_y
     if data.current_mpl_axes is not None and data.current_mpl_axes.get_yscale() == "log":
         left_lower_y = data.current_mpl_axes.get_ylim()[0]
 
@@ -169,18 +177,13 @@ def _draw_rectangle(data: TikzData, obj: Rectangle, draw_options: list) -> list[
         f"rectangle (axis cs:{right_upper_x:{ff}},{right_upper_y:{ff}});\n"
     ]
 
-    # Add legend info if needed
-    # content.append(_patch_legend(obj, draw_options, "area legend"))
-
-    if label not in ("", "_nolegend_") and str(label) not in data.rectangle_legends:
+    if label != "_nolegend_" and str(label) not in data.rectangle_legends:
         data.rectangle_legends.add(str(label))
         draw_opts = ",".join(draw_options)
         content.append(f"\\addlegendimage{{ybar,ybar legend,{draw_opts}}}\n")
         content.append(f"\\addlegendentry{{{label}}}\n\n")
 
     return content
-
-
 
 def _draw_ellipse(data: TikzData, obj: Ellipse, draw_options: list) -> list[str]:
     """Return the PGFPlots code for ellipses."""
