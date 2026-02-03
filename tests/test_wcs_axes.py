@@ -2,25 +2,16 @@
 
 import warnings
 
-try:
-    import astropy
-    from astropy.wcs import WCS
-
-    HAS_ASTROPY = True
-except ImportError:
-    HAS_ASTROPY = False
-
-import matplot2tikz
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
-import pytest
-from matplotlib.figure import Figure
+from astropy.wcs import WCS
+
+import matplot2tikz
 
 mpl.use("Agg")
 
 
-@pytest.mark.skipif(not HAS_ASTROPY, reason="astropy is not installed")
 def test_wcs_axes() -> None:
     """Test that WCS axes are handled without warnings."""
     # Create a simple WCS
