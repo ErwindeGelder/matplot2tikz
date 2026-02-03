@@ -370,23 +370,33 @@ def _remove_nans(data: np.ndarray) -> np.ndarray:
 
     I.e., those at the end/beginning of the data and consecutive ones.
     """
+
+    # do nothing if data is empty, as it would be after a call to clean_figure()
+    if data.size == 0:
+        return data
+
     id_nan = np.any(np.isnan(data), axis=1)
+
+    # Likewise guard against all rows being NaN
+    valid = np.argwhere(~id_nan).reshape((-1,))
+
+    if valid.size == 0:
+        return data[:0]
+
     id_remove = np.argwhere(id_nan).reshape((-1,))
-    if not _isempty(id_remove):
-        id_remove = id_remove[
-            np.concatenate([np.diff(id_remove, axis=0) == 1, np.array([False]).reshape((-1,))])
-        ]
+    if id_remove.size != 0:
+        consecutive = np.diff(id_remove) == 1
+        id_remove = id_remove[np.concatenate([consecutive, np.array([False])])]
 
-    id_first = np.argwhere(np.logical_not(id_nan))[0]
-    id_last = np.argwhere(np.logical_not(id_nan))[-1]
+    id_first = valid[0]
+    id_last = valid[-1]
 
-    if _isempty(id_first):
-        # remove entire data
-        id_remove = np.arange(len(data))
-    else:
-        id_remove = np.concatenate(
-            [np.arange(0, id_first[0]), id_remove, np.arange(id_last[0] + 1, len(data))]
-        )
+    id_remove = np.concatenate(
+            [np.arange(0, id_first),
+            id_remove,
+            np.arange(id_last + 1, len(data))]
+            )
+
     return np.delete(data, id_remove, axis=0)
 
 
