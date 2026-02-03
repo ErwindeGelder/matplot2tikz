@@ -14,8 +14,6 @@ from . import _color
 if TYPE_CHECKING:
     from ._tikzdata import TikzData
 
-from ._util import _common_texification
-
 
 def draw_text(data: TikzData, obj: Text) -> list[str]:
     """Paints text on the graph.
@@ -28,7 +26,7 @@ def draw_text(data: TikzData, obj: Text) -> list[str]:
     ff = data.float_format
     tikz_pos = _get_tikz_pos(data, obj, content)
 
-    text = _common_texification(obj.get_text())
+    text = obj.get_text()
 
     if text in ["", data.current_axis_title]:
         # Text nodes which are direct children of Axes are typically titles.  They are
