@@ -391,6 +391,10 @@ def _recurse(data: TikzData, obj: Artist) -> list:
         if isinstance(child, (Spine, XAxis, YAxis)):
             continue
 
+        # Skip WCS axes artist - it's a placeholder with no visible content
+        if type(child).__name__ == "_WCSAxesArtist":
+            continue
+
         if isinstance(child, Axes):
             _process_axes(data, child, content)
 
