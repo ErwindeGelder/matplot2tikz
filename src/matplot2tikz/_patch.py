@@ -185,6 +185,7 @@ def _draw_rectangle(data: TikzData, obj: Rectangle, draw_options: list) -> list[
 
     return content
 
+
 def _draw_ellipse(data: TikzData, obj: Ellipse, draw_options: list) -> list[str]:
     """Return the PGFPlots code for ellipses."""
     if isinstance(obj, Circle):

@@ -1,6 +1,5 @@
-"""Test Legend entries for secondary axis plots"""
+"""Test Legend entries for secondary axis plots."""
 
-import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.figure import Figure
@@ -20,8 +19,8 @@ def plot() -> Figure:
     ax2 = ax1.twinx()
 
     # Plot on both axes
-    ax1.plot(t, y1, color='b', label='Linear')
-    ax2.plot(t, y2, color='r', label='Quadratic')  # ← On ax2!
+    ax1.plot(t, y1, color="b", label="Linear")
+    ax2.plot(t, y2, color="r", label="Quadratic")  # ← On ax2!
 
     # Combine legends on ax1 (common matplotlib pattern)
     lines1, labels1 = ax1.get_legend_handles_labels()
@@ -29,6 +28,7 @@ def plot() -> Figure:
     ax1.legend(lines1 + lines2, labels1 + labels2)
 
     return fig
+
 
 def test() -> None:
     assert_equality(plot, __file__[:-3] + "_reference.tex")

@@ -4,7 +4,6 @@ import logging
 import sys
 import tempfile
 import warnings
-from numpy import isclose, all
 from pathlib import Path
 from typing import TYPE_CHECKING, TypedDict
 
@@ -390,7 +389,7 @@ def _recurse(data: TikzData, obj: Artist) -> list:
     for child in obj.get_children():
         # Some patches are Spines, too; skip those entirely.
         # See <https://github.com/nschloe/tikzplotlib/issues/277>.
-        
+
         # Filter out the Figure's background patch
         if (
             isinstance(obj, Figure)

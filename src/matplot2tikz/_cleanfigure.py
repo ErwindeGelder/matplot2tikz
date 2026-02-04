@@ -206,7 +206,7 @@ def _cleanline(
         cfd.visual_data = _get_visual_data(cfd.axes, cfd.data)
 
         if not isinstance(linehandle, art3d.Line3D):
-            cfd.visual_data = _move_points_closer(cfd.x_lim, cfd.y_lim, cfd.visual_data)
+            cfd.visual_data = _move_points_closer(cfd.y_lim, cfd.visual_data)
 
         cfd.has_markers = linehandle.get_marker() != "None"
         cfd.has_lines = linehandle.get_linestyle() != "None"
@@ -244,7 +244,7 @@ def _clean_collections(
     cfd.visual_data = _get_visual_data(cfd.axes, cfd.data)
 
     if not isinstance(collection, art3d.Path3DCollection):
-        cfd.visual_data = _move_points_closer(cfd.x_lim, cfd.y_lim, cfd.visual_data)
+        cfd.visual_data = _move_points_closer(cfd.y_lim, cfd.visual_data)
         cfd.visual_data = _get_visual_data(cfd.axes, cfd.visual_data)
 
     cfd.has_markers = True
@@ -530,7 +530,7 @@ def _prune_outside_box(cfd: CleanFigureData) -> np.ndarray:
     return _remove_nans(data)
 
 
-def _move_points_closer(x_lim: np.ndarray, y_lim: np.ndarray, data: np.ndarray) -> np.ndarray:
+def _move_points_closer(y_lim: np.ndarray, data: np.ndarray) -> np.ndarray:
     """Move points closer if needed.
 
     Move all points outside a box much larger than the visible one
@@ -543,8 +543,8 @@ def _move_points_closer(x_lim: np.ndarray, y_lim: np.ndarray, data: np.ndarray) 
     the inverse transformation to project back into 3D.
     """
     # Calculate the extension of the extended box
-    # (x_width not important for clipping, as it is already dealt with elsewhere (maybe by matplotlib when lim() occurs))
-    # x_width = x_lim[1] - x_lim[0]
+    # (x_width not important for clipping, as it is already dealt with elsewhere (maybe by
+    # matplotlib when lim() occurs))
     y_width = y_lim[1] - y_lim[0]
 
     # Don't choose the larger box too large to make sure that the values inside
