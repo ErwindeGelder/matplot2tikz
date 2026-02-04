@@ -10,8 +10,8 @@ import matplotlib.transforms
 import numpy as np
 
 if TYPE_CHECKING:
+    from matplotlib.artist import Artist
     from matplotlib.axes import Axes
-    from matplotlib.collections import PathCollection
     from matplotlib.lines import Line2D
     from mpl_toolkits.mplot3d import Axes3D
 
@@ -20,8 +20,8 @@ def has_legend(axes: Axes | Axes3D) -> bool:
     return axes.get_legend() is not None
 
 
-def get_legend_text(obj: Line2D | PathCollection) -> str | None:
-    """Check if line is in legend."""
+def get_legend_text(obj: Artist) -> str | None:
+    """Check if object is in legend."""
     if obj.axes is None:
         return None
 

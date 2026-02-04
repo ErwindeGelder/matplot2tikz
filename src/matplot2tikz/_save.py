@@ -450,7 +450,7 @@ def _process_axes(data: TikzData, obj: Axes, content: _ContentManager) -> None:
     children_content = _recurse(data, obj)
 
     fig = obj.figure
-    if obj == fig.axes[0]:
+    if fig is not None and obj == fig.axes[0]:
         for other_ax in fig.axes:
             if other_ax == obj:
                 continue
@@ -459,9 +459,10 @@ def _process_axes(data: TikzData, obj: Axes, content: _ContentManager) -> None:
                 if (
                     legend_text is not None
                     and hasattr(child, "axes")
+                    and child.axes is not None
                     and child.axes.get_legend() is None
                 ):
-                    plot_label = child.get_label() + "_plot"
+                    plot_label = str(child.get_label()) + "_plot"
                     children_content.append(
                         f"\\addlegendimage{{/pgfplots/refstyle={plot_label}}}\n"
                     )

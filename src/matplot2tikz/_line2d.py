@@ -66,7 +66,7 @@ def draw_line2d(data: TikzData, obj: Line2D) -> list[str]:
         else [obj_xdata]
     )
 
-    if len(xdata) == 0:
+    if len(xdata) == 0 or obj.axes is None:
         return []
 
     primitive_legend = obj.axes.get_legend()
