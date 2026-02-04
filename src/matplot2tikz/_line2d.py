@@ -66,8 +66,10 @@ def draw_line2d(data: TikzData, obj: Line2D) -> list[str]:
         else [obj_xdata]
     )
 
-    if len(xdata) == 0:
+    if len(xdata) == 0 or obj.axes is None:
         return []
+
+    primitive_legend = obj.axes.get_legend()
 
     # Get several plot options
     addplot_options = _get_line2d_options(data, obj)
@@ -85,8 +87,10 @@ def draw_line2d(data: TikzData, obj: Line2D) -> list[str]:
 
     content += _table(data, obj)
 
-    if legend_text is not None:
+    if legend_text is not None and primitive_legend is not None:
         content.append(f"\\addlegendentry{{{legend_text}}}\n")
+    elif legend_text is not None and primitive_legend is None:
+        content.append(f"\\label{{{legend_text + '_plot'}}}\n")
 
     return content
 

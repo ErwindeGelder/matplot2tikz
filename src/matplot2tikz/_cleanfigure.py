@@ -206,7 +206,7 @@ def _cleanline(
         cfd.visual_data = _get_visual_data(cfd.axes, cfd.data)
 
         if not isinstance(linehandle, art3d.Line3D):
-            cfd.visual_data = _move_points_closer(cfd.x_lim, cfd.y_lim, cfd.visual_data)
+            cfd.visual_data = _move_points_closer(cfd.y_lim, cfd.visual_data)
 
         cfd.has_markers = linehandle.get_marker() != "None"
         cfd.has_lines = linehandle.get_linestyle() != "None"
@@ -244,7 +244,7 @@ def _clean_collections(
     cfd.visual_data = _get_visual_data(cfd.axes, cfd.data)
 
     if not isinstance(collection, art3d.Path3DCollection):
-        cfd.visual_data = _move_points_closer(cfd.x_lim, cfd.y_lim, cfd.visual_data)
+        cfd.visual_data = _move_points_closer(cfd.y_lim, cfd.visual_data)
         cfd.visual_data = _get_visual_data(cfd.axes, cfd.visual_data)
 
     cfd.has_markers = True
@@ -530,7 +530,7 @@ def _prune_outside_box(cfd: CleanFigureData) -> np.ndarray:
     return _remove_nans(data)
 
 
-def _move_points_closer(x_lim: np.ndarray, y_lim: np.ndarray, data: np.ndarray) -> np.ndarray:
+def _move_points_closer(y_lim: np.ndarray, data: np.ndarray) -> np.ndarray:
     """Move points closer if needed.
 
     Move all points outside a box much larger than the visible one
@@ -543,30 +543,25 @@ def _move_points_closer(x_lim: np.ndarray, y_lim: np.ndarray, data: np.ndarray) 
     the inverse transformation to project back into 3D.
     """
     # Calculate the extension of the extended box
-    x_width = x_lim[1] - x_lim[0]
+    # (x_width not important for clipping, as it is already dealt with elsewhere (maybe by
+    # matplotlib when lim() occurs))
     y_width = y_lim[1] - y_lim[0]
 
     # Don't choose the larger box too large to make sure that the values inside
     # it can still be treated by TeX.
+
     extended_factor = 0.1
-    large_xlim = x_lim + extended_factor * np.array([-x_width, x_width])
-    large_ylim = y_lim + extended_factor * np.array([-y_width, y_width])
+    y_min_ext = y_lim[0] - extended_factor * y_width
+    y_max_ext = y_lim[1] + extended_factor * y_width
 
-    data_is_in_large_box = _is_in_box(data, large_xlim, large_ylim)
-    data_is_in_large_box = np.logical_or(data_is_in_large_box, np.any(np.isnan(data), axis=1))
-    id_replace = np.argwhere(np.logical_not(data_is_in_large_box))
+    # Copy data to avoid modifying original array
+    clipped_data = np.array(data, copy=True)
 
-    data_insert = np.array([[]])
-    if not _isempty(id_replace):
-        msg = (
-            "There is data outside of the box. Don't know how to handle during cleaning. "
-            "Please check if x/ylim is to tight"
-        )
-        raise NotImplementedError(msg)
-    data = _insert_data(data, id_replace, data_insert)
-    if _isempty(id_replace):
-        return data
-    raise NotImplementedError
+    # Clip y-values
+    # We assume data is Nx2: columns [x, y]
+    clipped_data[:, 1] = np.clip(clipped_data[:, 1], y_min_ext, y_max_ext)
+
+    return clipped_data
 
 
 def _insert_data(

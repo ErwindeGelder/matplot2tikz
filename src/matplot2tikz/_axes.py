@@ -68,6 +68,9 @@ class MyAxes:
         self.data.current_axis_title = title
         if title:
             title = _common_texification(title)
+            if "\n" in title:
+                title = title.replace("\n", r"\\")
+                self.data.current_axis_options.add(r"title style={align=center}")
             self.data.current_axis_options.add(f"title={{{title}}}")
 
     def _set_axis_titles(self) -> None:
