@@ -44,6 +44,7 @@ test = [
     "coverage[toml]>=7.0.0",
     "typeguard>=4.4.0",
     "pandas",
+    "astropy"
 ]
 dev = [
     "tox",
