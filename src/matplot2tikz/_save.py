@@ -390,20 +390,9 @@ def _recurse(data: TikzData, obj: Artist) -> list:
         # Some patches are Spines, too; skip those entirely.
         # See <https://github.com/nschloe/tikzplotlib/issues/277>.
 
-        # Filter out the Figure's background patch
+        # Filter out the Figure's/Axes' background patch
         if (
-            isinstance(obj, Figure)
-            and isinstance(child, Patch)
-            and child is obj.patch
-            and child.get_facecolor() == (1.0, 1.0, 1.0, 1.0)  # White face color
-            and child.get_linewidth() == 0.0
-        ) or not child.get_visible():
-            continue
-
-        # Filter out the Axes' background patch
-
-        if (
-            isinstance(obj, Axes)
+            isinstance(obj, (Figure, Axes))
             and isinstance(child, Patch)
             and child is obj.patch
             and child.get_facecolor() == (1.0, 1.0, 1.0, 1.0)  # White face color
