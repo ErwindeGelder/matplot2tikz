@@ -1,7 +1,9 @@
 name: Tests
 
 on:
-  - pull_request
+  pull_request:
+    branches:
+      - main  # Only runs if the PR is aiming to merge INTO main
 
 jobs:
   test:
