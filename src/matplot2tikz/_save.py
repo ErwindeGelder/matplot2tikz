@@ -98,14 +98,19 @@ def get_tikz_code(  # noqa: PLR0913
                        TikZ/PGFPlots output. If ``axis_height`` is not given,
                        ``matplot2tikz`` will try to preserve the original width/height
                        ratio.  Note that ``axis_width`` can be a string literal, such as
-                       ``'\\axis_width'``.
+                       ``'\\axis_width'``. If both ``axis_width`` and ``axis_height``
+                       are omitted and the figure has a single (non-colorbar) axis,
+                       they default to the figure size in inches (e.g. from
+                       ``figsize`` in ``plt.subplots()``), with the ``"in"`` suffix.
     :type axis_width: str
 
     :param axis_height: If not ``None``, this will be used as figure height within the
                         TikZ/PGFPlots output. If ``axis_width`` is not given,
                         ``matplot2tikz`` will try to preserve the original width/height
-                        ratio.  Note that ``axis_width`` can be a string literal, such
-                        as ``'\\axis_height'``.
+                        ratio.  Note that ``axis_height`` can be a string literal, such
+                        as ``'\\axis_height'``. If both ``axis_width`` and
+                        ``axis_height`` are omitted and the figure has a single
+                        (non-colorbar) axis, they default to the figure size in inches.
     :type axis_height: str
 
     :param textsize: The text size (in pt) that the target latex document is using.
@@ -279,6 +284,9 @@ def save(
 ) -> None:
     """Same as `get_tikz_code()`, but actually saves the code to a file.
 
+    All other arguments (e.g. ``axis_width``, ``axis_height``, ``figure``) are
+    passed through to `get_tikz_code()`; see that function for documentation.
+
     :param filepath: The file to which the TikZ output will be written.
     :type filepath: str
 
@@ -379,6 +387,32 @@ def _draw_collection(data: TikzData, child: Collection) -> list[str]:
     return _patch.draw_patchcollection(data, child)
 
 
+def _set_default_axis_dimensions_from_figure(data: TikzData, fig: Figure) -> None:
+    """Set axis width/height from figure size (in) when both unset and one non-colorbar axis."""
+    if data.axis_width is not None or data.axis_height is not None:
+        return
+    non_cb_axes = [a for a in fig.axes if not _axes.is_colorbar_heuristic(a)]
+    if len(non_cb_axes) != 1:
+        return
+    data.axis_width = f"{fig.get_figwidth():{data.float_format}}in"
+    data.axis_height = f"{fig.get_figheight():{data.float_format}}in"
+
+
+def _should_skip_child(obj: Artist, child: Artist) -> bool:
+    """Return True if this child should be skipped (background patch, spine, invisible, etc.)."""
+    if (
+        isinstance(obj, (Figure, Axes))
+        and isinstance(child, Patch)
+        and child is obj.patch
+        and child.get_facecolor() == (1.0, 1.0, 1.0, 1.0)
+        and child.get_linewidth() == 0.0
+    ) or not child.get_visible():
+        return True
+    if isinstance(child, (Spine, XAxis, YAxis)):
+        return True
+    return type(child).__name__ == "_WCSAxesArtist"
+
+
 def _recurse(data: TikzData, obj: Artist) -> list:
     """Iterates over all children of the current object and gathers the contents.
 
@@ -386,25 +420,11 @@ def _recurse(data: TikzData, obj: Artist) -> list:
     """
     content = _ContentManager()
 
+    if isinstance(obj, Figure):
+        _set_default_axis_dimensions_from_figure(data, obj)
+
     for child in obj.get_children():
-        # Some patches are Spines, too; skip those entirely.
-        # See <https://github.com/nschloe/tikzplotlib/issues/277>.
-
-        # Filter out the Figure's/Axes' background patch
-        if (
-            isinstance(obj, (Figure, Axes))
-            and isinstance(child, Patch)
-            and child is obj.patch
-            and child.get_facecolor() == (1.0, 1.0, 1.0, 1.0)  # White face color
-            and child.get_linewidth() == 0.0
-        ) or not child.get_visible():
-            continue
-
-        if isinstance(child, (Spine, XAxis, YAxis)):
-            continue
-
-        # Skip WCS axes artist - it's a placeholder with no visible content
-        if type(child).__name__ == "_WCSAxesArtist":
+        if _should_skip_child(obj, child):
             continue
 
         if isinstance(child, Axes):

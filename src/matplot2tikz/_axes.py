@@ -669,6 +669,10 @@ def _is_colorbar_heuristic(obj: Axes) -> bool:
     )
 
 
+# Public alias for use by _save when computing default axis dimensions.
+is_colorbar_heuristic = _is_colorbar_heuristic
+
+
 def _mpl_cmap2pgf_cmap(cmap: Colormap, data: TikzData) -> tuple[str, bool]:
     """Converts a color map as given in matplotlib to a color map as represented in PGFPlots."""
     if isinstance(cmap, LinearSegmentedColormap):
