@@ -14,14 +14,20 @@ mpl.use("Agg")
 def plot() -> Figure:
     x = [1, 2, 3, 4]
     y = [1, 4, 9, 6]
-
-    fig = plt.figure()
-    for i, (bottom, top, left, right) in enumerate(itertools.product(["off", "on"], repeat=4)):
-        plt.subplot(4, 4, i + 1)
+    
+    fig = plt.figure(figsize=(10, 10))
+    
+    # repeat=4 gives 16 combinations of (bottom, top, left, right)
+    for i, (b, t, l, r) in enumerate(itertools.product([False, True], repeat=4)):
+        ax = plt.subplot(4, 4, i + 1)
         plt.plot(x, y, "ro")
-        plt.tick_params(axis="x", which="both", bottom=bottom, top=top)
-        plt.tick_params(axis="y", which="both", left=left, right=right)
+        
+        # Set the visibility of the tick lines
+        # We also turn off the labels so the plots don't overlap
+        ax.tick_params(axis="x", which="both", bottom=b, top=t, labelbottom=False)
+        ax.tick_params(axis="y", which="both", left=l, right=r, labelleft=False)
 
+    plt.tight_layout()
     return fig
 
 
