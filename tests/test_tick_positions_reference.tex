@@ -4,15 +4,19 @@
 
 \begin{groupplot}[group style={group size=4 by 4}]
 \nextgroupplot[
+scaled x ticks=manual:{}{\pgfmathparse{#1}},
+scaled y ticks=manual:{}{\pgfmathparse{#1}},
 tick align=outside,
 x grid style={darkgray176},
 xmajorticks=false,
 xmin=0.85, xmax=4.15,
 xtick style={color=black},
+xticklabels={},
 y grid style={darkgray176},
 ymajorticks=false,
 ymin=0.6, ymax=9.4,
-ytick style={color=black}
+ytick style={color=black},
+yticklabels={}
 ]
 \addplot [semithick, red, mark=*, mark size=3, mark options={solid}, only marks]
 table {%
@@ -23,15 +27,19 @@ table {%
 };
 
 \nextgroupplot[
+scaled x ticks=manual:{}{\pgfmathparse{#1}},
+scaled y ticks=manual:{}{\pgfmathparse{#1}},
 tick align=outside,
 x grid style={darkgray176},
 xmajorticks=false,
 xmin=0.85, xmax=4.15,
 xtick style={color=black},
+xticklabels={},
 y grid style={darkgray176},
-ymajorticks=false,
 ymin=0.6, ymax=9.4,
-ytick style={color=black}
+ytick pos=right,
+ytick style={color=black},
+yticklabels={}
 ]
 \addplot [semithick, red, mark=*, mark size=3, mark options={solid}, only marks]
 table {%
@@ -42,15 +50,19 @@ table {%
 };
 
 \nextgroupplot[
+scaled x ticks=manual:{}{\pgfmathparse{#1}},
+scaled y ticks=manual:{}{\pgfmathparse{#1}},
 tick align=outside,
 x grid style={darkgray176},
 xmajorticks=false,
 xmin=0.85, xmax=4.15,
 xtick style={color=black},
+xticklabels={},
 y grid style={darkgray176},
-ymajorticks=false,
 ymin=0.6, ymax=9.4,
-ytick style={color=black}
+ytick pos=left,
+ytick style={color=black},
+yticklabels={}
 ]
 \addplot [semithick, red, mark=*, mark size=3, mark options={solid}, only marks]
 table {%
@@ -61,15 +73,19 @@ table {%
 };
 
 \nextgroupplot[
+scaled x ticks=manual:{}{\pgfmathparse{#1}},
+scaled y ticks=manual:{}{\pgfmathparse{#1}},
 tick align=outside,
 x grid style={darkgray176},
 xmajorticks=false,
 xmin=0.85, xmax=4.15,
 xtick style={color=black},
+xticklabels={},
 y grid style={darkgray176},
-ymajorticks=false,
 ymin=0.6, ymax=9.4,
-ytick style={color=black}
+ytick pos=both,
+ytick style={color=black},
+yticklabels={}
 ]
 \addplot [semithick, red, mark=*, mark size=3, mark options={solid}, only marks]
 table {%
@@ -80,15 +96,19 @@ table {%
 };
 
 \nextgroupplot[
+scaled x ticks=manual:{}{\pgfmathparse{#1}},
+scaled y ticks=manual:{}{\pgfmathparse{#1}},
 tick align=outside,
 x grid style={darkgray176},
-xmajorticks=false,
 xmin=0.85, xmax=4.15,
+xtick pos=right,
 xtick style={color=black},
+xticklabels={},
 y grid style={darkgray176},
 ymajorticks=false,
 ymin=0.6, ymax=9.4,
-ytick style={color=black}
+ytick style={color=black},
+yticklabels={}
 ]
 \addplot [semithick, red, mark=*, mark size=3, mark options={solid}, only marks]
 table {%
@@ -99,15 +119,18 @@ table {%
 };
 
 \nextgroupplot[
+scaled x ticks=manual:{}{\pgfmathparse{#1}},
+scaled y ticks=manual:{}{\pgfmathparse{#1}},
 tick align=outside,
+tick pos=right,
 x grid style={darkgray176},
-xmajorticks=false,
 xmin=0.85, xmax=4.15,
 xtick style={color=black},
+xticklabels={},
 y grid style={darkgray176},
-ymajorticks=false,
 ymin=0.6, ymax=9.4,
-ytick style={color=black}
+ytick style={color=black},
+yticklabels={}
 ]
 \addplot [semithick, red, mark=*, mark size=3, mark options={solid}, only marks]
 table {%
@@ -118,15 +141,19 @@ table {%
 };
 
 \nextgroupplot[
+scaled x ticks=manual:{}{\pgfmathparse{#1}},
+scaled y ticks=manual:{}{\pgfmathparse{#1}},
 tick align=outside,
 x grid style={darkgray176},
-xmajorticks=false,
 xmin=0.85, xmax=4.15,
+xtick pos=right,
 xtick style={color=black},
+xticklabels={},
 y grid style={darkgray176},
-ymajorticks=false,
 ymin=0.6, ymax=9.4,
-ytick style={color=black}
+ytick pos=left,
+ytick style={color=black},
+yticklabels={}
 ]
 \addplot [semithick, red, mark=*, mark size=3, mark options={solid}, only marks]
 table {%
@@ -137,15 +164,19 @@ table {%
 };
 
 \nextgroupplot[
+scaled x ticks=manual:{}{\pgfmathparse{#1}},
+scaled y ticks=manual:{}{\pgfmathparse{#1}},
 tick align=outside,
 x grid style={darkgray176},
-xmajorticks=false,
 xmin=0.85, xmax=4.15,
+xtick pos=right,
 xtick style={color=black},
+xticklabels={},
 y grid style={darkgray176},
-ymajorticks=false,
 ymin=0.6, ymax=9.4,
-ytick style={color=black}
+ytick pos=both,
+ytick style={color=black},
+yticklabels={}
 ]
 \addplot [semithick, red, mark=*, mark size=3, mark options={solid}, only marks]
 table {%
@@ -156,15 +187,19 @@ table {%
 };
 
 \nextgroupplot[
+scaled x ticks=manual:{}{\pgfmathparse{#1}},
+scaled y ticks=manual:{}{\pgfmathparse{#1}},
 tick align=outside,
 x grid style={darkgray176},
-xmajorticks=false,
 xmin=0.85, xmax=4.15,
+xtick pos=left,
 xtick style={color=black},
+xticklabels={},
 y grid style={darkgray176},
 ymajorticks=false,
 ymin=0.6, ymax=9.4,
-ytick style={color=black}
+ytick style={color=black},
+yticklabels={}
 ]
 \addplot [semithick, red, mark=*, mark size=3, mark options={solid}, only marks]
 table {%
@@ -175,15 +210,19 @@ table {%
 };
 
 \nextgroupplot[
+scaled x ticks=manual:{}{\pgfmathparse{#1}},
+scaled y ticks=manual:{}{\pgfmathparse{#1}},
 tick align=outside,
 x grid style={darkgray176},
-xmajorticks=false,
 xmin=0.85, xmax=4.15,
+xtick pos=left,
 xtick style={color=black},
+xticklabels={},
 y grid style={darkgray176},
-ymajorticks=false,
 ymin=0.6, ymax=9.4,
-ytick style={color=black}
+ytick pos=right,
+ytick style={color=black},
+yticklabels={}
 ]
 \addplot [semithick, red, mark=*, mark size=3, mark options={solid}, only marks]
 table {%
@@ -194,15 +233,18 @@ table {%
 };
 
 \nextgroupplot[
+scaled x ticks=manual:{}{\pgfmathparse{#1}},
+scaled y ticks=manual:{}{\pgfmathparse{#1}},
 tick align=outside,
+tick pos=left,
 x grid style={darkgray176},
-xmajorticks=false,
 xmin=0.85, xmax=4.15,
 xtick style={color=black},
+xticklabels={},
 y grid style={darkgray176},
-ymajorticks=false,
 ymin=0.6, ymax=9.4,
-ytick style={color=black}
+ytick style={color=black},
+yticklabels={}
 ]
 \addplot [semithick, red, mark=*, mark size=3, mark options={solid}, only marks]
 table {%
@@ -213,15 +255,19 @@ table {%
 };
 
 \nextgroupplot[
+scaled x ticks=manual:{}{\pgfmathparse{#1}},
+scaled y ticks=manual:{}{\pgfmathparse{#1}},
 tick align=outside,
 x grid style={darkgray176},
-xmajorticks=false,
 xmin=0.85, xmax=4.15,
+xtick pos=left,
 xtick style={color=black},
+xticklabels={},
 y grid style={darkgray176},
-ymajorticks=false,
 ymin=0.6, ymax=9.4,
-ytick style={color=black}
+ytick pos=both,
+ytick style={color=black},
+yticklabels={}
 ]
 \addplot [semithick, red, mark=*, mark size=3, mark options={solid}, only marks]
 table {%
@@ -232,15 +278,19 @@ table {%
 };
 
 \nextgroupplot[
+scaled x ticks=manual:{}{\pgfmathparse{#1}},
+scaled y ticks=manual:{}{\pgfmathparse{#1}},
 tick align=outside,
 x grid style={darkgray176},
-xmajorticks=false,
 xmin=0.85, xmax=4.15,
+xtick pos=both,
 xtick style={color=black},
+xticklabels={},
 y grid style={darkgray176},
 ymajorticks=false,
 ymin=0.6, ymax=9.4,
-ytick style={color=black}
+ytick style={color=black},
+yticklabels={}
 ]
 \addplot [semithick, red, mark=*, mark size=3, mark options={solid}, only marks]
 table {%
@@ -251,15 +301,19 @@ table {%
 };
 
 \nextgroupplot[
+scaled x ticks=manual:{}{\pgfmathparse{#1}},
+scaled y ticks=manual:{}{\pgfmathparse{#1}},
 tick align=outside,
 x grid style={darkgray176},
-xmajorticks=false,
 xmin=0.85, xmax=4.15,
+xtick pos=both,
 xtick style={color=black},
+xticklabels={},
 y grid style={darkgray176},
-ymajorticks=false,
 ymin=0.6, ymax=9.4,
-ytick style={color=black}
+ytick pos=right,
+ytick style={color=black},
+yticklabels={}
 ]
 \addplot [semithick, red, mark=*, mark size=3, mark options={solid}, only marks]
 table {%
@@ -270,15 +324,19 @@ table {%
 };
 
 \nextgroupplot[
+scaled x ticks=manual:{}{\pgfmathparse{#1}},
+scaled y ticks=manual:{}{\pgfmathparse{#1}},
 tick align=outside,
 x grid style={darkgray176},
-xmajorticks=false,
 xmin=0.85, xmax=4.15,
+xtick pos=both,
 xtick style={color=black},
+xticklabels={},
 y grid style={darkgray176},
-ymajorticks=false,
 ymin=0.6, ymax=9.4,
-ytick style={color=black}
+ytick pos=left,
+ytick style={color=black},
+yticklabels={}
 ]
 \addplot [semithick, red, mark=*, mark size=3, mark options={solid}, only marks]
 table {%
@@ -289,15 +347,18 @@ table {%
 };
 
 \nextgroupplot[
+scaled x ticks=manual:{}{\pgfmathparse{#1}},
+scaled y ticks=manual:{}{\pgfmathparse{#1}},
 tick align=outside,
+tick pos=both,
 x grid style={darkgray176},
-xmajorticks=false,
 xmin=0.85, xmax=4.15,
 xtick style={color=black},
+xticklabels={},
 y grid style={darkgray176},
-ymajorticks=false,
 ymin=0.6, ymax=9.4,
-ytick style={color=black}
+ytick style={color=black},
+yticklabels={}
 ]
 \addplot [semithick, red, mark=*, mark size=3, mark options={solid}, only marks]
 table {%
