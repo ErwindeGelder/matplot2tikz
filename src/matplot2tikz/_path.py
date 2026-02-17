@@ -248,6 +248,10 @@ def draw_pathcollection(data: TikzData, obj: PathCollection) -> list[str]:
 def _draw_pathcollection_scatter_colormap(data: TikzData, pcd: PathCollectionData) -> None:
     obj_array = pcd.obj.get_array()
     if obj_array is not None:
+        # clean_figure() can cause a mismatch in color array len, so check and truncate as needed
+        if len(obj_array) != len(pcd.dd_strings):
+            obj_array = obj_array[: len(pcd.dd_strings)]
+        
         pcd.dd_strings = np.column_stack([pcd.dd_strings, obj_array])
     pcd.labels.append("colordata")
     pcd.draw_options.append("scatter src=explicit")
