@@ -28,8 +28,8 @@ def plot() -> Figure:
 
     # We need to set the plot limits, they will not autoscale
     ax = plt.axes()
-    ax.set_xlim((np.amin(x), np.amax(x)))
-    ax.set_ylim((np.amin(np.amin(ys)), np.amax(np.amax(ys))))
+    ax.set_xlim((float(np.amin(x)), float(np.amax(x))))
+    ax.set_ylim((float(np.amin(np.amin(ys))), float(np.amax(np.amax(ys)))))
 
     # colors is sequence of rgba tuples
     # linestyle is a string or dash tuple. Legal string values are
