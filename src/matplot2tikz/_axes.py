@@ -570,11 +570,14 @@ def _get_ticks(data: TikzData, xy: str, ticks: list | np.ndarray, ticklabels: li
     Returns the necessary axis options for the given configuration.
     """
     axis_options = []
+    is_minor = "minor" in xy
     is_label_required = _is_label_required(ticks, ticklabels)
     pgfplots_ticklabels = _get_pgfplots_ticklabels(ticklabels)
 
+    # PGFPlots does not support custom labels for minor ticks (e.g., "minor xticklabels"
+    # is not a valid key), so skip ticklabels for minor ticks.
     # if the labels are all missing, then we need to output an empty set of labels
-    if len(ticklabels) == 0 and len(ticks) != 0:
+    if not is_minor and len(ticklabels) == 0 and len(ticks) != 0:
         axis_options.append(f"{xy}ticklabels={{}}")
         # remove the multiplier too
         axis_options.append(f"scaled {xy} ticks=" + r"manual:{}{\pgfmathparse{#1}}")
@@ -588,10 +591,10 @@ def _get_ticks(data: TikzData, xy: str, ticks: list | np.ndarray, ticklabels: li
                 "{}tick={{{}}}".format(xy, ",".join([f"{el:{ff}}" for el in ticks]))
             )
         else:
-            val = "{}" if "minor" in xy else "\\empty"
+            val = "{}" if is_minor else "\\empty"
             axis_options.append(f"{xy}tick={val}")
 
-        if is_label_required:
+        if is_label_required and not is_minor:
             length = sum(len(label) for label in pgfplots_ticklabels)
             max_line_length = 75
             sep = ("", ",", "") if length < max_line_length else ("\n  ", ",\n  ", "\n")
