@@ -95,7 +95,11 @@ def _get_tikz_pos(data: TikzData, obj: Text, content: list[str]) -> str:
     if isinstance(pos, str):
         return pos
     if obj.axes:
-        # If the coordinates are relative to an axis, use `axis cs`.
+        # Check if the text uses axes-relative coordinates (transform=ax.transAxes).
+        # In that case, use `rel axis cs` instead of `axis cs`.
+        transform = obj.get_transform()
+        if transform == obj.axes.transAxes:
+            return f"(rel axis cs:{pos[0]:{data.float_format}},{pos[1]:{data.float_format}})"
         return f"(axis cs:{pos[0]:{data.float_format}},{pos[1]:{data.float_format}})"
     # relative to the entire figure, it's a getting a littler harder. See
     # <http://tex.stackexchange.com/a/274902/13262> for a solution to the
