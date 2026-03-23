@@ -240,6 +240,12 @@ third-party code:
    # If tikzplotlib is used in this library, it will automatically use matplot2tikz instead.
    ```
 
+If you are updating your own scripts from tikzplotlib, you can simply use an import alias:
+
+   ```python
+   import matplot2tikz as tikzplotlib
+   ```
+
 ## Contributing
 
 If you experience bugs, would like to contribute, have nice examples of what matplot2tikz
