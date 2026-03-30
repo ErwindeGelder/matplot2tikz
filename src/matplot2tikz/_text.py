@@ -12,6 +12,8 @@ from matplotlib.text import Annotation, Text
 from . import _color
 
 if TYPE_CHECKING:
+    from matplotlib.offsetbox import AnchoredText
+
     from ._tikzdata import TikzData
 
 
@@ -85,6 +87,95 @@ def draw_text(data: TikzData, obj: Text) -> list[str]:
     props = ",\n  ".join(properties)
     text = " ".join([*style, text])
     content.append(f"\\draw {tikz_pos} node[\n  {props}\n]{{{text}}};\n")
+    return content
+
+
+# Mapping from matplotlib loc codes to (rel axis cs x, rel axis cs y, anchor).
+_LOC_TO_TIKZ: dict[int, tuple[float, float, str]] = {
+    1: (0.98, 0.98, "north east"),
+    2: (0.02, 0.98, "north west"),
+    3: (0.02, 0.02, "south west"),
+    4: (0.98, 0.02, "south east"),
+    5: (0.98, 0.5, "east"),
+    6: (0.02, 0.5, "west"),
+    7: (0.98, 0.5, "east"),
+    8: (0.5, 0.02, "south"),
+    9: (0.5, 0.98, "north"),
+    10: (0.5, 0.5, "center"),
+}
+
+
+def draw_anchored_text(data: TikzData, obj: AnchoredText) -> list[str]:
+    """Convert a matplotlib AnchoredText to TikZ.
+
+    :return: Content for tikz plot.
+    """
+    # Extract the Text object(s) from the AnchoredText's TextArea.
+    text_children = [c for c in obj.txt.get_children() if isinstance(c, Text)]
+    if not text_children:
+        return []
+
+    content: list[str] = []
+    ff = data.float_format
+
+    x, y, anchor = _LOC_TO_TIKZ.get(obj.loc, (0.5, 0.5, "center"))
+    tikz_pos = f"(rel axis cs:{x:{ff}},{y:{ff}})"
+
+    for text_obj in text_children:
+        text = text_obj.get_text()
+        if not text:
+            continue
+
+        properties: list[str] = []
+        style: list[str] = []
+
+        properties.append(f"anchor={anchor}")
+
+        # Font scaling
+        size = text_obj.get_fontsize()
+        if isinstance(size, str):
+            size = font_scalings[size]
+        scaling = 0.5 * size / data.font_size
+        if scaling != 1.0:
+            properties.append(f"scale={scaling:{ff}}")
+
+        # Bounding box from the AnchoredText's patch
+        bbox = obj.patch
+        if bbox is not None and bbox.get_visible():
+            _bbox(data, bbox, properties, scaling)
+
+        # Text color
+        converter = mpl.colors.ColorConverter()
+        col, _ = _color.mpl_color2xcolor(data, converter.to_rgb(text_obj.get_color()))
+        properties.append(f"text={col}")
+        properties.append("rotate=0.0")
+
+        # Font style
+        if text_obj.get_fontstyle() == "italic":
+            style.append("\\itshape")
+
+        weight = text_obj.get_fontweight()
+        min_weight_bold = 550
+        if weight in [
+            "semibold",
+            "demibold",
+            "demi",
+            "bold",
+            "heavy",
+            "extra bold",
+            "black",
+        ] or (isinstance(weight, int) and weight > min_weight_bold):
+            style.append("\\bfseries")
+
+        if "\n" in text:
+            ha = text_obj.get_horizontalalignment()
+            properties.append(f"align={ha}")
+            text = text.replace("\n ", "\\\\")
+
+        props = ",\n  ".join(properties)
+        text = " ".join([*style, text])
+        content.append(f"\\draw {tikz_pos} node[\n  {props}\n]{{{text}}};\n")
+
     return content
 
 
