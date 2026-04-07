@@ -16,6 +16,7 @@ from matplotlib.figure import Figure
 from matplotlib.image import AxesImage
 from matplotlib.legend import Legend
 from matplotlib.lines import Line2D
+from matplotlib.offsetbox import AnchoredText
 from matplotlib.patches import Patch
 from matplotlib.spines import Spine
 from matplotlib.text import Text
@@ -421,6 +422,7 @@ def _recurse(data: TikzData, obj: Artist) -> list:
                 (AxesImage, img.draw_image),
                 (Patch, _patch.draw_patch),
                 (Collection, _draw_collection),
+                (AnchoredText, _text.draw_anchored_text),
                 (Text, _text.draw_text),
             ):
                 if isinstance(child, child_type):
