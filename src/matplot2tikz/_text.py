@@ -6,10 +6,16 @@ from typing import TYPE_CHECKING
 
 import matplotlib as mpl
 from matplotlib.font_manager import font_scalings
-from matplotlib.patches import ArrowStyle, BoxStyle, FancyArrowPatch, FancyBboxPatch
+from matplotlib.patches import (
+    ArrowStyle,
+    BoxStyle,
+    FancyArrowPatch,
+    FancyBboxPatch,
+)
 from matplotlib.text import Annotation, Text
+from mpl_toolkits.mplot3d.art3d import Text3D
 
-from . import _color
+from . import _color, _mplot3d
 
 if TYPE_CHECKING:
     from matplotlib.offsetbox import AnchoredText
@@ -186,6 +192,12 @@ def _get_tikz_pos(data: TikzData, obj: Text, content: list[str]) -> str:
     if isinstance(pos, str):
         return pos
     if obj.axes:
+        if isinstance(obj, Text3D):
+            x, y, z = _mplot3d.get_text3d_position(obj)
+            return (
+                f"(axis cs:{x:{data.float_format}},{y:{data.float_format}},{z:{data.float_format}})"
+            )
+
         # Check if the text uses axes-relative coordinates (transform=ax.transAxes).
         # In that case, use `rel axis cs` instead of `axis cs`.
         transform = obj.get_transform()

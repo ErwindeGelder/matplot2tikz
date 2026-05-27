@@ -1,6 +1,7 @@
 \begin{tikzpicture}
 
 \definecolor{darkgray176}{RGB}{176,176,176}
+\definecolor{steelblue31119180}{RGB}{31,119,180}
 
 \begin{axis}[
 tick align=outside,
@@ -14,6 +15,8 @@ ytick style={color=black}
 ]
 \addplot [
   colormap/viridis,
+  draw=steelblue31119180,
+  mark=*,
   only marks,
   scatter,
   scatter src=explicit,

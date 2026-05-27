@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Iterable, Sized
-from typing import TYPE_CHECKING
+from collections.abc import Iterable, Sequence, Sized
+from typing import TYPE_CHECKING, cast
 
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.axes import Subplot
 from matplotlib.colors import Colormap, LinearSegmentedColormap, ListedColormap
+from mpl_toolkits.mplot3d import Axes3D
 
 from . import _color
 from ._util import _common_texification
@@ -15,6 +16,8 @@ from ._util import _common_texification
 if TYPE_CHECKING:
     from matplotlib.axes import Axes
     from matplotlib.colorbar import Colorbar
+    from matplotlib.lines import Line2D
+    from matplotlib.text import Text
 
     from ._tikzdata import TikzData
 
@@ -32,6 +35,8 @@ class MyAxes:
         if self.is_colorbar:
             return
 
+        self.is_3d = isinstance(obj, Axes3D)
+
         # instantiation
         self.nsubplots = 1
         self.subplot_index = 0
@@ -45,7 +50,8 @@ class MyAxes:
         self._set_hide_axis()
         self._set_plot_title()
         self._set_axis_titles()
-        xlim, ylim = self._set_axis_limits()
+        xlim, ylim, _ = self._set_axis_limits()
+        self._set_view()
         self._set_axis_scaling()
         self._set_axis_on_top()
         self._set_axis_dimensions(self._get_aspect_ratio(), xlim, ylim)
@@ -59,7 +65,9 @@ class MyAxes:
 
     def _set_hide_axis(self) -> None:
         # check if axes need to be displayed at all
-        if not self.obj.axison:
+        if self.is_3d and not self.obj._axis3don:  # type: ignore[attr-defined]  # noqa: SLF001
+            self.data.current_axis_options.add("hide axis")
+        elif not self.is_3d and not self.obj.axison:
             self.data.current_axis_options.add("hide x axis")
             self.data.current_axis_options.add("hide y axis")
 
@@ -87,7 +95,7 @@ class MyAxes:
                 self.data.current_axis_options.add(f"xlabel={{{xlabel}}}")
 
             xrotation = self.obj.xaxis.get_label().get_rotation()
-            if xrotation != 0:
+            if not self.is_3d and xrotation != 0:
                 self.data.current_axis_options.add(f"xlabel style={{rotate={xrotation - 90}}}")
 
         ylabel = self.obj.get_ylabel()
@@ -102,10 +110,22 @@ class MyAxes:
                 self.data.current_axis_options.add(f"ylabel={{{ylabel}}}")
 
             yrotation = self.obj.yaxis.get_label().get_rotation()
-            if yrotation != 90:  # noqa: PLR2004
+            if not self.is_3d and yrotation != 90:  # noqa: PLR2004
                 self.data.current_axis_options.add(f"ylabel style={{rotate={yrotation - 90}}}")
 
-    def _set_axis_limits(self) -> tuple[list[float], list[float]]:
+        if self.is_3d:
+            zlabel = self.obj.get_zlabel()  # type: ignore[attr-defined]
+            if zlabel:
+                zlabel = _common_texification(zlabel)
+
+                labelcolor = self.obj.zaxis.label.get_color()  # type: ignore[attr-defined]
+                if labelcolor != "black":
+                    col, _ = _color.mpl_color2xcolor(self.data, labelcolor)
+                    self.data.current_axis_options.add(f"zlabel=\\textcolor{{{col}}}{{{zlabel}}}")
+                else:
+                    self.data.current_axis_options.add(f"zlabel={{{zlabel}}}")
+
+    def _set_axis_limits(self) -> tuple[list[float], list[float], list[float] | None]:
         ff = self.data.float_format
         xlim = list(self.obj.get_xlim())
         xlim0, xlim1 = sorted(xlim)
@@ -119,7 +139,24 @@ class MyAxes:
             self.data.current_axis_options.add("x dir=reverse")
         if ylim != sorted(ylim):
             self.data.current_axis_options.add("y dir=reverse")
-        return xlim, ylim
+        # For 3D axes, also set zlim.
+        if self.is_3d:
+            zlim = list(self.obj.get_zlim())  # type: ignore[attr-defined]
+            zlim0, zlim1 = sorted(zlim)
+            self.data.current_axis_options.add(f"zmin={zlim0:{ff}}, zmax={zlim1:{ff}}")
+            if zlim != sorted(zlim):
+                self.data.current_axis_options.add("z dir=reverse")
+            return xlim, ylim, zlim
+        return xlim, ylim, None
+
+    def _set_view(self) -> None:
+        if not self.is_3d:
+            return
+        ff = self.data.float_format
+        # Matplotlib and PGFPlots use opposite azimuth signs for 3D views.
+        azim = -self.obj.azim  # type: ignore[attr-defined]
+        elev = self.obj.elev  # type: ignore[attr-defined]
+        self.data.current_axis_options.add("view={" + f"{azim:{ff}}" + "}{" + f"{elev:{ff}}" + "}")
 
     def _set_axis_scaling(self) -> None:
         if self.obj.get_xscale() == "log":
@@ -131,6 +168,11 @@ class MyAxes:
             self.data.current_axis_options.add("ymode=log")
             self.data.current_axis_options.add(
                 f"log basis y={{{_try_f2i(self.obj.yaxis._scale.base)}}}"  # type: ignore[attr-defined]  # noqa: SLF001
+            )
+        if self.is_3d and self.obj.get_zscale() == "log":  # type: ignore[attr-defined]
+            self.data.current_axis_options.add("zmode=log")
+            self.data.current_axis_options.add(
+                f"log basis z={{{_try_f2i(self.obj.zaxis._scale.base)}}}"  # type: ignore[attr-defined]  # noqa: SLF001
             )
 
     def _set_axis_on_top(self) -> None:
@@ -197,6 +239,8 @@ class MyAxes:
     def _set_ticks(self) -> None:
         self._get_ticks()
         self._get_tick_colors()
+        if self.is_3d:
+            return
         self._get_tick_direction()
         self._set_tick_rotation()
         self._set_tick_positions()
@@ -205,6 +249,35 @@ class MyAxes:
         # Don't use get_{x,y}gridlines for gridlines; see discussion on
         # <http://sourceforge.net/p/matplotlib/mailman/message/25169234/> Coordinate of
         # the lines are entirely meaningless, but styles (colors,...) are respected.
+        (
+            has_major_xgrid,
+            has_minor_xgrid,
+            has_major_ygrid,
+            has_minor_ygrid,
+            has_major_zgrid,
+            has_minor_zgrid,
+        ) = self._get_grid_visibility()
+
+        self._set_grid_options("x", (has_major_xgrid, has_minor_xgrid), self.obj.get_xgridlines())
+        self._set_grid_options("y", (has_major_ygrid, has_minor_ygrid), self.obj.get_ygridlines())
+        if self.is_3d:
+            self._set_grid_options(
+                "z",
+                (has_major_zgrid, has_minor_zgrid),
+                self.obj.get_zgridlines(),  # type: ignore[attr-defined]
+            )
+
+    def _get_grid_visibility(self) -> tuple[bool, bool, bool, bool, bool, bool]:
+        if self.is_3d:
+            has_major_grid = bool(self.obj._draw_grid)  # type: ignore[attr-defined]  # noqa: SLF001
+            return (
+                has_major_grid,
+                False,
+                has_major_grid,
+                False,
+                has_major_grid,
+                False,
+            )
 
         try:
             # mpl 3.3.3+
@@ -219,29 +292,29 @@ class MyAxes:
             has_major_ygrid = self.obj.yaxis._gridOnMajor  # type: ignore[attr-defined]  # noqa: SLF001
             has_minor_ygrid = self.obj.yaxis._gridOnMinor  # type: ignore[attr-defined]  # noqa: SLF001
 
-        if has_major_xgrid:
-            self.data.current_axis_options.add("xmajorgrids")
-        if has_minor_xgrid:
-            self.data.current_axis_options.add("xminorgrids")
+        return (
+            has_major_xgrid,
+            has_minor_xgrid,
+            has_major_ygrid,
+            has_minor_ygrid,
+            False,
+            False,
+        )
 
-        xlines = self.obj.get_xgridlines()
-        if xlines:
-            xgridcolor = xlines[0].get_color()
-            col, _ = _color.mpl_color2xcolor(self.data, xgridcolor)
-            if col != "black":
-                self.data.current_axis_options.add(f"x grid style={{{col}}}")
-
-        if has_major_ygrid:
-            self.data.current_axis_options.add("ymajorgrids")
-        if has_minor_ygrid:
-            self.data.current_axis_options.add("yminorgrids")
-
-        ylines = self.obj.get_ygridlines()
-        if ylines:
-            ygridcolor = ylines[0].get_color()
-            col, _ = _color.mpl_color2xcolor(self.data, ygridcolor)
-            if col != "black":
-                self.data.current_axis_options.add(f"y grid style={{{col}}}")
+    def _set_grid_options(
+        self, axis_name: str, grid_state: tuple[bool, bool], gridlines: Sequence[Line2D]
+    ) -> None:
+        has_major_grid, has_minor_grid = grid_state
+        if has_major_grid:
+            self.data.current_axis_options.add(f"{axis_name}majorgrids")
+        if has_minor_grid:
+            self.data.current_axis_options.add(f"{axis_name}minorgrids")
+        if not gridlines:
+            return
+        gridcolor = gridlines[0].get_color()
+        col, _ = _color.mpl_color2xcolor(self.data, gridcolor)
+        if col != "black":
+            self.data.current_axis_options.add(f"{axis_name} grid style={{{col}}}")
 
     def _set_axis_line_styles(self) -> None:
         # Assume that the bottom edge color is the color of the entire box.
@@ -362,47 +435,52 @@ class MyAxes:
         return ""
 
     def _get_ticks(self) -> None:
-        self.data.current_axis_options.update(
-            _get_ticks(self.data, "x", self.obj.get_xticks(), self.obj.get_xticklabels())
+        if self.is_3d:
+            self._get_3d_ticks()
+            return
+
+        self._add_tick_options("x", self.obj.get_xticks(), self.obj.get_xticklabels())
+        self._add_tick_options("y", self.obj.get_yticks(), self.obj.get_yticklabels())
+        self._add_tick_options(
+            "minor x",
+            self.obj.get_xticks(minor=True),
+            self.obj.get_xticklabels(minor=True),
         )
-        self.data.current_axis_options.update(
-            _get_ticks(self.data, "y", self.obj.get_yticks(), self.obj.get_yticklabels())
+        self._add_tick_options(
+            "minor y",
+            self.obj.get_yticks(minor=True),
+            self.obj.get_yticklabels(minor=True),
         )
-        self.data.current_axis_options.update(
-            _get_ticks(
-                self.data,
-                "minor x",
-                self.obj.get_xticks(minor=True),
-                self.obj.get_xticklabels(minor=True),
-            )
-        )
-        self.data.current_axis_options.update(
-            _get_ticks(
-                self.data,
-                "minor y",
-                self.obj.get_yticks(minor=True),
-                self.obj.get_yticklabels(minor=True),
-            )
-        )
+
+    def _get_3d_ticks(self) -> None:
+        axes3d = cast("Axes3D", self.obj)
+        for axis_name, ticks, ticklabels in (
+            ("x", self.obj.get_xticks(), self.obj.get_xticklabels()),
+            ("y", self.obj.get_yticks(), self.obj.get_yticklabels()),
+            ("z", axes3d.get_zticks(), axes3d.get_zticklabels()),
+            ("minor x", self.obj.get_xticks(minor=True), self.obj.get_xticklabels(minor=True)),
+            ("minor y", self.obj.get_yticks(minor=True), self.obj.get_yticklabels(minor=True)),
+            ("minor z", axes3d.get_zticks(minor=True), axes3d.get_zticklabels(minor=True)),
+        ):
+            self._add_tick_options(axis_name, ticks, ticklabels)
+
+    def _add_tick_options(
+        self, axis_name: str, ticks: Sequence[float] | np.ndarray, ticklabels: Sequence[Text]
+    ) -> None:
+        self.data.current_axis_options.update(_get_ticks(self.data, axis_name, ticks, ticklabels))
 
     def _get_tick_colors(self) -> None:
-        try:
-            l0 = self.obj.get_xticklines()[0]
-        except IndexError:
-            pass
-        else:
-            c0 = l0.get_color()
-            xtickcolor, _ = _color.mpl_color2xcolor(self.data, c0)
-            self.data.current_axis_options.add(f"xtick style={{color={xtickcolor}}}")
+        self._add_tick_color_option("x", self.obj.get_xticklines())
+        self._add_tick_color_option("y", self.obj.get_yticklines())
+        if self.is_3d:
+            self._add_tick_color_option("z", cast("Axes3D", self.obj).get_zticklines())
 
-        try:
-            l0 = self.obj.get_yticklines()[0]
-        except IndexError:
-            pass
-        else:
-            c0 = l0.get_color()
-            ytickcolor, _ = _color.mpl_color2xcolor(self.data, c0)
-            self.data.current_axis_options.add(f"ytick style={{color={ytickcolor}}}")
+    def _add_tick_color_option(self, axis_name: str, ticklines: Sequence[Line2D]) -> None:
+        if not ticklines:
+            return
+        first_tickline = ticklines[0]
+        tickcolor, _ = _color.mpl_color2xcolor(self.data, first_tickline.get_color())
+        self.data.current_axis_options.add(f"{axis_name}tick style={{color={tickcolor}}}")
 
     def _get_tick_direction(self) -> None:
         # For new matplotlib versions, we could replace the direction getter by
@@ -564,7 +642,12 @@ def _get_tick_position(obj: Axes, x_or_y: str) -> tuple[str | None, str | None]:
     return position_string, major_ticks_position
 
 
-def _get_ticks(data: TikzData, xy: str, ticks: list | np.ndarray, ticklabels: list) -> list[str]:
+def _get_ticks(
+    data: TikzData,
+    xy: str,
+    ticks: Sequence[float] | np.ndarray,
+    ticklabels: Sequence[Text],
+) -> list[str]:
     """Gets a {'x','y'}, a number of ticks and ticks labels.
 
     Returns the necessary axis options for the given configuration.
@@ -603,7 +686,7 @@ def _get_ticks(data: TikzData, xy: str, ticks: list | np.ndarray, ticklabels: li
     return axis_options
 
 
-def _is_label_required(ticks: list | np.ndarray, ticklabels: list) -> bool:
+def _is_label_required(ticks: Sequence[float] | np.ndarray, ticklabels: Sequence[Text]) -> bool:
     """Check if the label is necessary.
 
     If one of the labels is, then all of them must appear in the TikZ plot.
@@ -631,7 +714,7 @@ def _is_label_required(ticks: list | np.ndarray, ticklabels: list) -> bool:
     return False
 
 
-def _get_pgfplots_ticklabels(ticklabels: list) -> list[str]:
+def _get_pgfplots_ticklabels(ticklabels: Sequence[Text]) -> list[str]:
     pgfplots_ticklabels = []
     for ticklabel in ticklabels:
         label = ticklabel.get_text()
