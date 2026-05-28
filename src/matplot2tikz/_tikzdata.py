@@ -8,6 +8,8 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from matplotlib.axes import Axes
 
+    from ._clip3d import Clip3DMode
+
 
 @dataclass
 class TikzData:
@@ -22,6 +24,8 @@ class TikzData:
     strict: bool = False
     standalone: bool = False
     is_in_groupplot_env: bool = False
+    clip_3d: Clip3DMode = "none"
+    shader: str = "none"
 
     dpi: int = 100
     font_size: float = 10.0

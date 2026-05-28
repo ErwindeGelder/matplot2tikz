@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import matplotlib as mpl
+import numpy as np
 from matplotlib.font_manager import font_scalings
 from matplotlib.patches import (
     ArrowStyle,
@@ -16,6 +17,7 @@ from matplotlib.text import Annotation, Text
 from mpl_toolkits.mplot3d.art3d import Text3D
 
 from . import _color, _mplot3d
+from ._clip3d import clip_box_from_axes, points_inside
 
 if TYPE_CHECKING:
     from matplotlib.offsetbox import AnchoredText
@@ -36,9 +38,7 @@ def draw_text(data: TikzData, obj: Text) -> list[str]:
 
     text = obj.get_text()
 
-    if text in ["", data.current_axis_title]:
-        # Text nodes which are direct children of Axes are typically titles.  They are
-        # already captured by the `title` property of pgfplots axes, so skip them here.
+    if _is_skipped_text(data, obj, text):
         return content
 
     size = obj.get_fontsize()
@@ -183,6 +183,20 @@ def draw_anchored_text(data: TikzData, obj: AnchoredText) -> list[str]:
         content.append(f"\\draw {tikz_pos} node[\n  {props}\n]{{{text}}};\n")
 
     return content
+
+
+def _is_skipped_text(data: TikzData, obj: Text, text: str) -> bool:
+    if text in ["", data.current_axis_title]:
+        return True
+    return _is_clipped_text3d(data, obj)
+
+
+def _is_clipped_text3d(data: TikzData, obj: Text) -> bool:
+    if data.clip_3d == "none" or not isinstance(obj, Text3D) or obj.axes is None:
+        return False
+    x, y, z = _mplot3d.get_text3d_position(obj)
+    mask = points_inside(np.asarray([[x, y, z]], dtype=float), clip_box_from_axes(obj.axes))
+    return not bool(mask[0])
 
 
 def _get_tikz_pos(data: TikzData, obj: Text, content: list[str]) -> str:

@@ -17,6 +17,13 @@ from mpl_toolkits.mplot3d.art3d import (
 from . import _files, _line2d
 from . import _path as mypath
 from ._axes import _mpl_cmap2pgf_cmap
+from ._clip3d import (
+    ClipBox3D,
+    clip_box_from_axes,
+    clip_line_to_box,
+    clip_polygon_to_box,
+    points_inside,
+)
 from ._util import get_legend_text, has_legend
 
 if TYPE_CHECKING:
@@ -28,7 +35,6 @@ if TYPE_CHECKING:
 
 MIN_POLYGON_VERTICES = 3
 RGBA_LENGTH = 4
-ColorArray = np.ndarray
 HashableColor = tuple[float, ...]
 LineStyle = str | tuple[float, Sequence[float] | None] | None
 T = TypeVar("T")
@@ -36,16 +42,16 @@ T = TypeVar("T")
 
 @dataclass
 class Poly3DStyle:
-    facecolor: ColorArray | None
-    edgecolor: ColorArray | None
+    facecolor: np.ndarray | None
+    edgecolor: np.ndarray | None
     linewidth: float | None
     linestyle: LineStyle
 
 
 @dataclass
 class Poly3DStyleArrays:
-    facecolors: ColorArray | None
-    edgecolors: ColorArray
+    facecolors: np.ndarray | None
+    edgecolors: np.ndarray
     linewidths: Sequence[float | None] | np.ndarray
     linestyles: Sequence[LineStyle]
 
@@ -53,7 +59,7 @@ class Poly3DStyleArrays:
 @dataclass
 class Poly3DColorGroup:
     segments: list[np.ndarray]
-    colors: list[ColorArray | None]
+    colors: list[np.ndarray | None]
     style_options: list[str]
     vertex_count: int
 
@@ -66,8 +72,7 @@ class Quiver3DData:
 
 def is_quiver3d_collection(obj: Collection) -> bool:
     # Since a quiver3d collection is represented as a Line3DCollection with a
-    # specific structure of segments and uniform style, it can only be identifed
-    # by checking both
+    # specific structure of segments and uniform style, both must be checked.
     if not isinstance(obj, Line3DCollection):
         return False
     style_arrays = _poly3d_style_arrays(obj)
@@ -117,9 +122,33 @@ def get_poly3d_segments(obj: Collection) -> list[np.ndarray]:
         msg = f"Expected Poly3DCollection, got {type(obj)}."
         raise TypeError(msg)
 
-    vec = obj._vec  # noqa: SLF001
-    segslices = obj._segslices  # noqa: SLF001
-    return [np.asarray(vec[:3, segslice].T, dtype=float) for segslice in segslices]
+    # Matplotlib <= 3.10 stores Poly3DCollection vertices in _vec/_segslices.
+    if hasattr(obj, "_vec") and hasattr(obj, "_segslices"):
+        vec = obj._vec  # noqa: SLF001
+        segslices = obj._segslices  # noqa: SLF001
+        return [np.asarray(vec[:3, segslice].T, dtype=float) for segslice in segslices]
+
+    # Matplotlib 3.11.0rc1 switched to padded _faces plus _invalid_vertices.
+    faces = getattr(obj, "_faces", None)
+    if faces is None:
+        msg = "Poly3DCollection has neither _vec/_segslices nor _faces."
+        raise AttributeError(msg)
+
+    faces = np.asarray(faces, dtype=float)
+    if faces.ndim != 3 or faces.shape[-1] != 3:  # noqa: PLR2004
+        msg = f"Expected Poly3DCollection._faces with shape (n, m, 3), got {faces.shape}."
+        raise ValueError(msg)
+
+    invalid_vertices = np.asarray(getattr(obj, "_invalid_vertices", False), dtype=bool)
+    if invalid_vertices.ndim == 0:
+        if bool(invalid_vertices):
+            return []
+        return [np.asarray(face, dtype=float) for face in faces]
+
+    return [
+        np.asarray(face[~invalid_mask], dtype=float)
+        for face, invalid_mask in zip(faces, invalid_vertices, strict=False)
+    ]
 
 
 def get_poly3d_facecolors(obj: Collection) -> np.ndarray:
@@ -146,7 +175,8 @@ def get_contour3d_verts_and_codes(obj: Collection) -> list[tuple[np.ndarray, np.
 def draw_line3d(data: TikzData, obj: Line2D) -> list[str]:
     """Return PGFPlots code for a 3D line."""
     coordinates = get_line3d_data(obj)
-    if len(coordinates) == 0:
+    segments = _line_segments_for_export(data, coordinates)
+    if not segments:
         return []
 
     addplot_options = _line2d._get_line2d_options(data, obj)  # noqa: SLF001
@@ -154,10 +184,12 @@ def draw_line3d(data: TikzData, obj: Line2D) -> list[str]:
     if legend_text is None and obj.axes is not None and has_legend(obj.axes):
         addplot_options.append("forget plot")
 
-    content = ["\\addplot3 "]
-    if addplot_options:
-        content.append("[{}]\n".format(", ".join(addplot_options)))
-    content.extend(table(data, coordinates))
+    content = []
+    for segment in segments:
+        content.append("\\addplot3 ")
+        if addplot_options:
+            content.append("[{}]\n".format(", ".join(addplot_options)))
+        content.extend(table(data, segment))
 
     if legend_text is not None:
         content.append(f"\\addlegendentry{{{legend_text}}}\n")
@@ -167,6 +199,9 @@ def draw_line3d(data: TikzData, obj: Line2D) -> list[str]:
 
 def draw_quiver3d(data: TikzData, obj: Line3DCollection) -> list[str]:
     """Return PGFPlots code for a 3D quiver plot."""
+    if data.clip_3d == "clip":
+        return draw_line3dcollection(data, obj)
+
     style_arrays = _poly3d_style_arrays(obj)
     segments = get_segments3d(obj)
     quiver_data = _quiver3d_data(data, obj, segments, style_arrays)
@@ -199,17 +234,33 @@ def draw_line3dcollection(data: TikzData, obj: Line3DCollection) -> list[str]:
         options = mypath.get_draw_options(
             data, mypath.LineData(obj=obj, ec=color, ls=style, lw=width)
         )
-        content.extend(
-            addplot_table(
-                data,
-                segment,
-                command="addplot3",
-                options=options,
-                externalize_min_rows=3,
+        for export_segment in _line_segments_for_export(data, segment):
+            content.extend(
+                addplot_table(
+                    data,
+                    export_segment,
+                    command="addplot3",
+                    options=options,
+                    externalize_min_rows=3,
+                )
             )
-        )
 
     return content
+
+
+def _line_segments_for_export(data: TikzData, points: np.ndarray) -> list[np.ndarray]:
+    if len(points) == 0:
+        return []
+    clip_box = _clip_box(data)
+    if clip_box is None:
+        return [points]
+    return clip_line_to_box(points, clip_box, data.clip_3d)
+
+
+def _clip_box(data: TikzData) -> ClipBox3D | None:
+    if data.clip_3d == "none" or data.current_mpl_axes is None:
+        return None
+    return clip_box_from_axes(data.current_mpl_axes)
 
 
 def _quiver3d_data(
@@ -220,6 +271,9 @@ def _quiver3d_data(
 ) -> Quiver3DData | None:
     quiver_coordinates = _quiver3d_coordinates(segments)
     if quiver_coordinates is None:
+        return None
+    quiver_coordinates = _clip_quiver_coordinates(data, quiver_coordinates)
+    if len(quiver_coordinates) == 0:
         return None
 
     style = _cycle_array(style_arrays.linestyles, 0)
@@ -277,13 +331,33 @@ def _array_len(values: Sequence[object] | np.ndarray | None) -> int:
     return 0 if values is None else len(values)
 
 
+def _clip_quiver_coordinates(data: TikzData, coordinates: np.ndarray) -> np.ndarray:
+    clip_box = _clip_box(data)
+    if clip_box is None:
+        return coordinates
+    tails = coordinates[:, :3]
+    tips = coordinates[:, :3] + coordinates[:, 3:6]
+    mask = points_inside(tails, clip_box) & points_inside(tips, clip_box)
+    return coordinates[mask]
+
+
 def draw_path3dcollection(data: TikzData, obj: PathCollection) -> list[str]:
     """Return PGFPlots code for 3D scatter/path collections."""
+    offsets = get_offsets3d(obj)
+    mask = _scatter_mask_for_export(data, offsets)
+    if mask is None:
+        return _draw_path3dcollection(data, obj, offsets)
+    if not np.any(mask):
+        return []
+    return _draw_clipped_path3dcollection(data, obj, offsets, mask)
+
+
+def _draw_path3dcollection(data: TikzData, obj: PathCollection, offsets: np.ndarray) -> list[str]:
     pcd = mypath.make_pathcollection_data(
         data,
         obj,
         mypath.PathCollectionCoordinates(
-            offsets=get_offsets3d(obj),
+            offsets=offsets,
             labels=["x", "y", "z"],
             table_options=["x=x", "y=y", "z=z"],
             is_contour=False,
@@ -293,13 +367,44 @@ def draw_path3dcollection(data: TikzData, obj: PathCollection) -> list[str]:
     return mypath.draw_pathcollection_data(data, pcd)
 
 
+def _scatter_mask_for_export(data: TikzData, offsets: np.ndarray) -> np.ndarray | None:
+    clip_box = _clip_box(data)
+    if clip_box is None:
+        return None
+    return points_inside(offsets, clip_box)
+
+
+def _draw_clipped_path3dcollection(
+    data: TikzData, obj: PathCollection, offsets: np.ndarray, mask: np.ndarray
+) -> list[str]:
+    obj3d = cast("Path3DCollection", obj)
+    old_offsets = obj3d._offsets3d  # noqa: SLF001
+    old_array = obj.get_array()
+    old_sizes = obj.get_sizes()
+    old_edgecolors = obj.get_edgecolors()  # type: ignore[attr-defined]
+    old_facecolors = obj.get_facecolors()  # type: ignore[attr-defined]
+    try:
+        obj3d._offsets3d = tuple(offsets[mask].T)  # noqa: SLF001
+        if old_array is not None and len(old_array) == len(mask):
+            obj.set_array(np.asarray(old_array)[mask])
+        if len(old_sizes) == len(mask):
+            obj.set_sizes(old_sizes[mask])
+        if len(old_edgecolors) == len(mask):
+            obj.set_edgecolors(old_edgecolors[mask])  # type: ignore[attr-defined]
+        if len(old_facecolors) == len(mask):
+            obj.set_facecolors(old_facecolors[mask])  # type: ignore[attr-defined]
+        return _draw_path3dcollection(data, obj, offsets[mask])
+    finally:
+        obj3d._offsets3d = old_offsets  # noqa: SLF001
+        obj.set_array(old_array)
+        obj.set_sizes(old_sizes)
+        obj.set_edgecolors(old_edgecolors)  # type: ignore[attr-defined]
+        obj.set_facecolors(old_facecolors)  # type: ignore[attr-defined]
+
+
 def draw_poly3dcollection(data: TikzData, obj: Collection) -> list[str]:
     """Returns PGFPlots patch-plot code for 3D polygon collections."""
-    indexed_segments = [
-        (index, vertices)
-        for index, vertices in enumerate(get_poly3d_segments(obj))
-        if len(vertices) >= MIN_POLYGON_VERTICES
-    ]
+    indexed_segments = _poly_segments_for_export(data, get_poly3d_segments(obj))
     if not indexed_segments:
         return []
 
@@ -314,6 +419,31 @@ def draw_poly3dcollection(data: TikzData, obj: Collection) -> list[str]:
             return _draw_poly3dcollection_colormapped(data, obj, segment_colors)
 
     return _draw_poly3dcollection_explicit_colors(data, obj, indexed_segments)
+
+
+def _poly_segments_for_export(
+    data: TikzData, segments: list[np.ndarray]
+) -> list[tuple[int, np.ndarray]]:
+    clip_box = _clip_box(data)
+    if clip_box is None:
+        return [
+            (index, vertices)
+            for index, vertices in enumerate(segments)
+            if len(vertices) >= MIN_POLYGON_VERTICES
+        ]
+
+    indexed_segments: list[tuple[int, np.ndarray]] = []
+    for index, vertices in enumerate(segments):
+        if len(vertices) < MIN_POLYGON_VERTICES:
+            continue
+        if data.clip_3d == "clip" and np.all(points_inside(vertices, clip_box)):
+            indexed_segments.append((index, vertices))
+            continue
+
+        clipped = clip_polygon_to_box(vertices, clip_box, data.clip_3d)
+        if len(clipped) >= MIN_POLYGON_VERTICES:
+            indexed_segments.append((index, clipped))
+    return indexed_segments
 
 
 def draw_contour3d(data: TikzData, obj: Collection) -> list[str]:
@@ -331,9 +461,7 @@ def _draw_contour3d_lines(data: TikzData, obj: Collection) -> list[str]:
         options = _poly3d_style_options(
             data, obj, _poly3d_style_at(style_arrays, i, include_facecolor=False)
         )
-        for segment in _split_contour3d_vertices(vertices, codes):
-            if len(segment) < 2:  # noqa: PLR2004
-                continue
+        for segment in _split_contour3d_vertices_for_export(data, vertices, codes):
             content.extend(addplot_table(data, segment, command="addplot3", options=options))
     return content
 
@@ -343,20 +471,46 @@ def _draw_contour3d_filled(data: TikzData, obj: Collection, facecolors: np.ndarr
     content: list[str] = []
     style_arrays = _poly3d_style_arrays(obj, facecolors=facecolors)
     for i, (vertices, codes) in enumerate(get_contour3d_verts_and_codes(obj)):
-        segments = [
-            segment
-            for segment in _split_contour3d_vertices(vertices, codes)
-            if len(segment) >= MIN_POLYGON_VERTICES
-        ]
+        segments = _contourf_segments_for_export(data, vertices, codes)
         if not segments:
             continue
         style = _poly3d_style_at(style_arrays, i)
         for vertex_count, grouped_segments in _group_segments_only_by_vertex_count(segments):
-            options = _poly3d_base_options(vertex_count)
+            options = _poly3d_base_options(data, vertex_count)
             options.extend(_poly3d_style_options(data, obj, style))
-            options.append(_patch_table(grouped_segments))
+            options.append(_patch_table(data, grouped_segments))
             content.extend(_poly3d_addplot(data, grouped_segments, options))
     return content
+
+
+def _split_contour3d_vertices_for_export(
+    data: TikzData, vertices: np.ndarray, codes: np.ndarray | None
+) -> list[np.ndarray]:
+    segments = _split_contour3d_vertices(vertices, codes)
+    clip_box = _clip_box(data)
+    if clip_box is None:
+        return [segment for segment in segments if len(segment) >= 2]  # noqa: PLR2004
+
+    export_segments = []
+    for segment in segments:
+        export_segments.extend(clip_line_to_box(segment, clip_box, data.clip_3d))
+    return export_segments
+
+
+def _contourf_segments_for_export(
+    data: TikzData, vertices: np.ndarray, codes: np.ndarray | None
+) -> list[np.ndarray]:
+    segments = _split_contour3d_vertices(vertices, codes)
+    clip_box = _clip_box(data)
+    if clip_box is None:
+        return [segment for segment in segments if len(segment) >= MIN_POLYGON_VERTICES]
+
+    export_segments = []
+    for segment in segments:
+        clipped = clip_polygon_to_box(segment, clip_box, data.clip_3d)
+        if len(clipped) >= MIN_POLYGON_VERTICES:
+            export_segments.append(clipped)
+    return export_segments
 
 
 def _split_contour3d_vertices(vertices: np.ndarray, codes: np.ndarray | None) -> list[np.ndarray]:
@@ -393,15 +547,48 @@ def _draw_poly3dcollection_colormapped(
         colormap_option = "colormap" + ("=" if is_custom_cmap else "/") + mycolormap
         data.current_axis_options.add(colormap_option)
 
+    # Triangulate if shading is enabled and any polygon has more than 4 vertices, since PGFPlots
+    # only supports shading for triangles and bilinear shading for quads.
+    if data.shader != "none" and any(len(vertices) > 4 for vertices, _ in segment_colors):  # noqa: PLR2004
+        segment_colors = [
+            (segment, color_value)
+            for vertices, color_value in segment_colors
+            for segment in _triangulate_polygon(vertices)
+        ]
+
     for vertex_count, group in _group_segments_by_vertex_count(segment_colors):
         grouped_segments = [segment for segment, _ in group]
         grouped_color_data = [color_value for _, color_value in group]
-        options = _poly3d_base_options(vertex_count)
+        options = _poly3d_base_options(data, vertex_count, use_shader=data.shader != "none")
         options.extend(_poly3d_collection_options(data, obj))
-        options.append(_patch_table(grouped_segments, grouped_color_data))
-        content.extend(_poly3d_addplot(data, grouped_segments, options))
+
+        if data.shader != "none":
+            options.append(r"point meta=\thisrow{meta}")
+            options.append(_patch_table(data, grouped_segments))
+            content.extend(
+                _poly3d_addplot(
+                    data,
+                    grouped_segments,
+                    options,
+                    point_meta_segments=_poly3d_z_point_meta(grouped_segments),
+                )
+            )
+        else:
+            options.append(_patch_table(data, grouped_segments, grouped_color_data))
+            content.extend(_poly3d_addplot(data, grouped_segments, options))
 
     return content
+
+
+def _triangulate_polygon(vertices: np.ndarray) -> list[np.ndarray]:
+    if len(vertices) < MIN_POLYGON_VERTICES:
+        return []
+    if len(vertices) == MIN_POLYGON_VERTICES:
+        return [vertices]
+    return [
+        np.asarray([vertices[0], vertices[i], vertices[i + 1]], dtype=float)
+        for i in range(1, len(vertices) - 1)
+    ]
 
 
 def _draw_poly3dcollection_explicit_colors(
@@ -442,14 +629,14 @@ def _draw_poly3dcollection_explicit_colors(
 
     content: list[str] = []
     for group in grouped.values():
-        options = _poly3d_base_options(group.vertex_count)
+        options = _poly3d_base_options(data, group.vertex_count)
         options.extend(group.style_options)
         color_indices = _poly3d_explicit_color_indices(group.colors)
         if not color_indices.unique_colors:
-            options.append(_patch_table(group.segments))
+            options.append(_patch_table(data, group.segments))
         elif len(color_indices.unique_colors) > 1:
             options.extend(_poly3d_colormap_options(data, color_indices.unique_colors))
-            options.append(_patch_table(group.segments, color_indices.indices))
+            options.append(_patch_table(data, group.segments, color_indices.indices))
         else:
             color = color_indices.unique_colors[0]
             options.extend(
@@ -459,25 +646,42 @@ def _draw_poly3dcollection_explicit_colors(
                     Poly3DStyle(color, None, None, None),
                 )
             )
-            options.append(_patch_table(group.segments))
+            options.append(_patch_table(data, group.segments))
         content.extend(_poly3d_addplot(data, group.segments, options))
     return content
 
 
 @dataclass
 class Poly3DColorIndices:
-    unique_colors: list[ColorArray]
+    unique_colors: list[np.ndarray]
     indices: list[float]
 
 
-def _poly3d_base_options(vertex_count: int) -> list[str]:
-    return [
+def _poly3d_base_options(
+    data: TikzData, vertex_count: int, *, use_shader: bool = False
+) -> list[str]:
+    options = [
         "patch",
-        "patch type=polygon",
-        f"vertex count={vertex_count}",
+        *_poly3d_patch_type_options(use_shader, vertex_count),
         "table/row sep=\\\\",
         "z buffer=sort",
     ]
+    if use_shader:
+        options.append(_shader_option(data.shader))
+    return options
+
+
+def _poly3d_patch_type_options(use_shader: bool, vertex_count: int) -> list[str]:  # noqa: FBT001
+    if use_shader and vertex_count == 3:  # noqa: PLR2004
+        return ["patch type=triangle"]
+    if use_shader and vertex_count == 4:  # noqa: PLR2004
+        return ["patch type=bilinear"]
+    return ["patch type=polygon", f"vertex count={vertex_count}"]
+
+
+def _shader_option(shader: str) -> str:
+    shader = shader.removeprefix(",").strip()
+    return shader if shader.startswith("shader=") else f"shader={shader}"
 
 
 def _poly3d_collection_options(data: TikzData, obj: Collection) -> list[str]:
@@ -499,7 +703,7 @@ def _poly3d_collection_options(data: TikzData, obj: Collection) -> list[str]:
 def _poly3d_edge_options(
     data: TikzData,
     obj: Collection,
-    edgecolor: ColorArray | None,
+    edgecolor: np.ndarray | None,
     linewidth: float | None,
     linestyle: LineStyle,
 ) -> list[str]:
@@ -518,8 +722,8 @@ def _poly3d_edge_options(
 def _poly3d_style_arrays(
     obj: Collection,
     *,
-    facecolors: ColorArray | None = None,
-    edgecolors: ColorArray | None = None,
+    facecolors: np.ndarray | None = None,
+    edgecolors: np.ndarray | None = None,
 ) -> Poly3DStyleArrays:
     return Poly3DStyleArrays(
         facecolors=facecolors,
@@ -571,12 +775,12 @@ def _poly3d_style_options(
     return draw_options
 
 
-def _poly3d_explicit_color_indices(colors: list[ColorArray | None]) -> Poly3DColorIndices:
+def _poly3d_explicit_color_indices(colors: list[np.ndarray | None]) -> Poly3DColorIndices:
     non_null_colors = [color for color in colors if color is not None]
     if len(non_null_colors) != len(colors):
         return Poly3DColorIndices([], [])
 
-    unique_colors: list[ColorArray] = []
+    unique_colors: list[np.ndarray] = []
     indices: list[float] = []
     for color in non_null_colors:
         color_index = _matching_color_index(unique_colors, color)
@@ -587,14 +791,14 @@ def _poly3d_explicit_color_indices(colors: list[ColorArray | None]) -> Poly3DCol
     return Poly3DColorIndices(unique_colors, indices)
 
 
-def _matching_color_index(colors: list[ColorArray], color: ColorArray) -> int | None:
+def _matching_color_index(colors: list[np.ndarray], color: np.ndarray) -> int | None:
     for i, unique_color in enumerate(colors):
         if np.allclose(color, unique_color):
             return i
     return None
 
 
-def _poly3d_colormap_options(data: TikzData, colors: list[ColorArray]) -> list[str]:
+def _poly3d_colormap_options(data: TikzData, colors: list[np.ndarray]) -> list[str]:
     name = f"matplot2tikzpoly{data.custom_colormap_id}"
     data.custom_colormap_id += 1
 
@@ -611,32 +815,50 @@ def _poly3d_colormap_options(data: TikzData, colors: list[ColorArray]) -> list[s
     ]
 
 
-def _poly3d_addplot(data: TikzData, segments: list[np.ndarray], options: list[str]) -> list[str]:
+def _poly3d_z_point_meta(segments: list[np.ndarray]) -> list[np.ndarray]:
+    return [np.asarray(segment[:, 2], dtype=float) for segment in segments]
+
+
+def _poly3d_addplot(
+    data: TikzData,
+    segments: list[np.ndarray],
+    options: list[str],
+    *,
+    point_meta_segments: list[np.ndarray] | None = None,
+) -> list[str]:
+    column_names = "x y z meta" if point_meta_segments is not None else "x y z"
     content = [
         "\\addplot3 [\n",
         ",\n".join(options),
         "\n]\n",
         "table [row sep=\\\\] {%\n",
-        "x y z\\\\\n",
+        column_names + "\\\\\n",
     ]
 
     ff = data.float_format
-    for segment in segments:
-        for x, y, z in segment:
-            content.append(f"{x:{ff}} {y:{ff}} {z:{ff}}\\\\\n")
+    if point_meta_segments is None:
+        for segment in segments:
+            for x, y, z in segment:
+                content.append(f"{x:{ff}} {y:{ff}} {z:{ff}}\\\\\n")
+    else:
+        for segment, point_meta in zip(segments, point_meta_segments, strict=True):
+            for (x, y, z), meta in zip(segment, point_meta, strict=True):
+                content.append(f"{x:{ff}} {y:{ff}} {z:{ff}} {meta:{ff}}\\\\\n")
     content.append("};\n")
     return content
 
 
-def _patch_table(segments: list[np.ndarray], color_data: list[float] | None = None) -> str:
+def _patch_table(
+    data: TikzData, segments: list[np.ndarray], color_data: list[float] | None = None
+) -> str:
     rows: list[str] = []
     first_index = 0
     for i, segment in enumerate(segments):
-        indices: list[int | float] = list(range(first_index, first_index + len(segment)))
+        indices = [str(index) for index in range(first_index, first_index + len(segment))]
         first_index += len(segment)
         if color_data is not None:
-            indices.append(color_data[i])
-        rows.append(" ".join(str(index) for index in indices) + r"\\")
+            indices.append(_format_value(color_data[i], data.float_format))
+        rows.append(" ".join(indices) + r"\\")
 
     key = "patch table with point meta" if color_data is not None else "patch table"
     return key + "={%\n" + "\n".join(rows) + "\n}"
@@ -669,13 +891,13 @@ def _cycle_array(values: Sequence[T] | np.ndarray | None, index: int) -> T | Non
     return values[index % length]
 
 
-def _hashable_color(color: ColorArray | None) -> HashableColor | None:
+def _hashable_color(color: np.ndarray | None) -> HashableColor | None:
     if color is None:
         return None
     return tuple(float(value) for value in np.asarray(color).reshape(-1))
 
 
-def _rgb_color(color: ColorArray | None) -> ColorArray | None:
+def _rgb_color(color: np.ndarray | None) -> np.ndarray | None:
     if color is None:
         return None
     color_array = np.asarray(color, dtype=float).reshape(-1)
@@ -684,7 +906,7 @@ def _rgb_color(color: ColorArray | None) -> ColorArray | None:
     return color_array[:3]
 
 
-def _color_alpha(color: ColorArray | None) -> float | None:
+def _color_alpha(color: np.ndarray | None) -> float | None:
     if color is None:
         return None
     color_array = np.asarray(color, dtype=float).reshape(-1)
@@ -760,7 +982,7 @@ def table(
             opts.append(f"search path={{{data.externals_search_path}}}")
 
         opts_str = ("[" + ",".join(opts) + "] ") if opts else ""
-        content.append(f"table {{{opts_str}}}{{{rel_filepath.as_posix()}}};\n")
+        content.append(f"table {opts_str}{{{rel_filepath.as_posix()}}};\n")
         return content
 
     if opts:

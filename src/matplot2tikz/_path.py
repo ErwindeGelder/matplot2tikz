@@ -213,7 +213,7 @@ def draw_pathcollection_data(data: TikzData, path_collection_data: PathCollectio
 
     for path in obj.get_paths():
         _draw_pathcollection_draw_contour(path, data, path_collection_data)
-        _draw_pathcollection_scatter_sizes(path_collection_data)
+        _draw_pathcollection_scatter_sizes(data, path_collection_data)
 
         # remove duplicates
         draw_options = sorted(set(path_collection_data.draw_options))
@@ -287,7 +287,8 @@ def make_pathcollection_data(
 def _draw_pathcollection_scatter_colormap(data: TikzData, pcd: PathCollectionData) -> None:
     obj_array = pcd.obj.get_array()
     if obj_array is not None:
-        pcd.dd_strings = np.column_stack([pcd.dd_strings, obj_array])
+        colordata = [f"{value:{data.float_format}}" for value in np.ma.getdata(obj_array)]
+        pcd.dd_strings = np.column_stack([pcd.dd_strings, colordata])
     pcd.labels.append("colordata")
     pcd.draw_options.append("scatter src=explicit")
     coordinate_options = [f"{label}={label}" for label in pcd.labels if label in {"x", "y", "z"}]
@@ -311,7 +312,7 @@ def _draw_pathcollection_get_edgecolors(
     else:
         if len(edgecolors) == 1:
             line_data.ec = edgecolors[0]
-        elif len(edgecolors) > 1:
+        elif len(edgecolors) == len(pcd.dd_strings):
             pcd.labels.append("draw")
 
             ec_strings = [
@@ -333,7 +334,7 @@ def _draw_pathcollection_get_facecolors(
         if len(facecolors) == 1:
             line_data.fc = facecolors[0]
             pcd.is_filled = True
-        elif len(facecolors) > 1:
+        elif len(facecolors) == len(pcd.dd_strings):
             pcd.labels.append("fill")
             fc_strings = [
                 ",".join(f"{item:{data.float_format}}" for item in row)
@@ -436,11 +437,11 @@ def _draw_pathcollection_draw_contour(path: Path, data: TikzData, pcd: PathColle
         pcd.dd_strings = np.array(dd_strings[1:], dtype=object)
 
 
-def _draw_pathcollection_scatter_sizes(pcd: PathCollectionData) -> None:
+def _draw_pathcollection_scatter_sizes(data: TikzData, pcd: PathCollectionData) -> None:
     if len(pcd.obj.get_sizes()) == len(pcd.dd_strings):
         # See Pgfplots manual, chapter 4.25.
         # In Pgfplots, \mark size specifies radii, in matplotlib circle areas.
-        radii = np.sqrt(pcd.obj.get_sizes() / np.pi)
+        radii = [f"{radius:{data.float_format}}" for radius in np.sqrt(pcd.obj.get_sizes() / np.pi)]
         pcd.dd_strings = np.column_stack([pcd.dd_strings, radii])
         pcd.labels.append("sizedata")
         pcd.draw_options.extend(

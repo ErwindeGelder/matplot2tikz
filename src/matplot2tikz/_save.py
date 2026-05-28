@@ -5,7 +5,7 @@ import sys
 import tempfile
 import warnings
 from pathlib import Path
-from typing import TYPE_CHECKING, TypedDict, cast
+from typing import TYPE_CHECKING, Literal, TypedDict, cast
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -29,11 +29,16 @@ if TYPE_CHECKING:
 
     from matplotlib.artist import Artist
 
+    from ._clip3d import Clip3DMode
+
+
 from . import _axes, _legend, _line2d, _mplot3d, _patch, _path, _text, _util
 from . import _image as img
 from . import _quadmesh as qmsh
 from .__about__ import __version__
 from ._tikzdata import Flavors, TikzData
+
+ShaderMode = Literal["none", "interp"]
 
 # Set logger to be used to print some info
 LOGGER = logging.getLogger(__name__)
@@ -65,9 +70,17 @@ class TikzArgs(TypedDict):
     show_info: NotRequired[bool]
     include_disclaimer: NotRequired[bool]
     standalone: NotRequired[bool]
+    clip_3d: NotRequired[Clip3DMode]
+    shader: NotRequired[ShaderMode]
     float_format: NotRequired[str]
     table_row_sep: NotRequired[str]
     flavor: NotRequired[str]
+
+
+def _validate_clip_3d(clip_3d: str) -> None:
+    if clip_3d not in ("none", "hide", "clip"):
+        msg = 'clip_3d must be one of "none", "hide", or "clip".'
+        raise ValueError(msg)
 
 
 def get_tikz_code(  # noqa: PLR0913
@@ -91,6 +104,8 @@ def get_tikz_code(  # noqa: PLR0913
     show_info: bool = False,  # noqa: FBT001, FBT002
     include_disclaimer: bool = True,  # noqa: FBT001, FBT002
     standalone: bool = False,  # noqa: FBT001, FBT002
+    clip_3d: Clip3DMode = "none",
+    shader: ShaderMode = "none",
     float_format: str = ".15g",
     table_row_sep: str = "\n",
     flavor: str = "latex",
@@ -178,6 +193,16 @@ def get_tikz_code(  # noqa: PLR0913
     :param standalone: Include wrapper code for a standalone LaTeX file.
     :type standalone: bool
 
+    :param clip_3d: How 3D artists outside the 3D axis limits are handled.
+                    ``"none"`` preserves the current export behavior,
+                    ``"hide"`` removes artists outside the limits, and
+                    ``"clip"`` clips supported lines and polygons to the limits.
+    :type clip_3d: str
+
+    :param shader: Optional PGFPlots shader value for exported 3D patch plots,
+                   for example ``"interp"`` to emit ``shader=interp``.
+    :type shader: str
+
     :param float_format: Format for float entities. Default is ```".15g"```.
     :type float_format: str
 
@@ -206,6 +231,8 @@ def get_tikz_code(  # noqa: PLR0913
             f"Unsupported TeX flavor {flavor!r}. Please choose from {', '.join(map(repr, Flavors))}"
         )
         raise ValueError(msg) from None
+    _validate_clip_3d(clip_3d)
+
     data = TikzData(flavor=flavor_object)
 
     data.externalize_tables = externalize_tables
@@ -216,6 +243,8 @@ def get_tikz_code(  # noqa: PLR0913
     data.show_info = show_info
     data.strict = strict
     data.standalone = standalone
+    data.clip_3d = clip_3d
+    data.shader = shader
 
     data.axis_width, data.axis_height = axis_width, axis_height
     if tex_relative_path_to_data is not None:

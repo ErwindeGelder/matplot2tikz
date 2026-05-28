@@ -153,8 +153,9 @@ class MyAxes:
         if not self.is_3d:
             return
         ff = self.data.float_format
-        # Matplotlib and PGFPlots use opposite azimuth signs for 3D views.
-        azim = -self.obj.azim  # type: ignore[attr-defined]
+        # PGFPlots measures the azimuth from the opposite horizontal reference
+        # direction compared to Matplotlib's mplot3d camera angle.
+        azim = 180 - self.obj.azim  # type: ignore[attr-defined]
         elev = self.obj.elev  # type: ignore[attr-defined]
         self.data.current_axis_options.add("view={" + f"{azim:{ff}}" + "}{" + f"{elev:{ff}}" + "}")
 

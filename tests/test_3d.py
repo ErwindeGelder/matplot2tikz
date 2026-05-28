@@ -3,11 +3,12 @@
 import tempfile
 from collections.abc import Callable
 from pathlib import Path
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Literal, cast
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
+import pytest
 from matplotlib.figure import Figure
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 from typing_extensions import NotRequired, TypedDict, Unpack
@@ -21,6 +22,9 @@ mpl.use("Agg")
 if TYPE_CHECKING:
     from mpl_toolkits.mplot3d import Axes3D
 
+Clip3DMode = Literal["none", "hide", "clip"]
+ShaderMode = Literal["none", "interp"]
+
 
 class _TikzCodeOptions(TypedDict):
     axis_width: NotRequired[str | None]
@@ -30,6 +34,8 @@ class _TikzCodeOptions(TypedDict):
     add_axis_environment: NotRequired[bool]
     standalone: NotRequired[bool]
     externalize_tables: NotRequired[bool]
+    clip_3d: NotRequired[Clip3DMode]
+    shader: NotRequired[ShaderMode]
 
 
 def plot_line_and_scatter() -> Figure:
@@ -218,6 +224,17 @@ def test_surface_and_wireframe() -> None:
     assert_equality(plot_surface_and_wireframe, "test_3d_surface_and_wireframe_reference.tex")
 
 
+def test_3d_surface_shader_option() -> None:
+    code = _tikz_code(plot_surface_and_wireframe, shader="interp")
+
+    assert "shader=interp" in code
+    assert "patch type=bilinear" in code
+    assert r"point meta=\thisrow{meta}" in code
+    assert "x y z meta\\\\" in code
+    assert "patch table with point meta" not in code
+    assert "patch type=polygon,\nvertex count=4" not in code
+
+
 def test_3d_axis_uses_native_label_and_tick_layout() -> None:
     code = _tikz_code(plot_surface_and_wireframe)
 
@@ -249,7 +266,7 @@ def test_3d_grid_matches_mplot3d_default() -> None:
 def test_3d_view_uses_pgfplots_azimuth_convention() -> None:
     code = _tikz_code(plot_line_and_scatter)
 
-    assert "view={-38}{28}" in code
+    assert "view={142}{28}" in code
 
 
 def test_strict_3d_ticks_use_matplotlib_locations() -> None:
@@ -330,9 +347,275 @@ def test_poly3d_colormap_keeps_colors_aligned_after_filtering() -> None:
     code = matplot2tikz.get_tikz_code(fig, include_disclaimer=False, float_format=".8g")
     plt.close("all")
 
-    assert "0 1 2 1.0\\\\" in code
-    assert "3 4 5 2.0\\\\" in code
-    assert "0 1 2 0.0\\\\" not in code
+    assert "0 1 2 1\\\\" in code
+    assert "3 4 5 2\\\\" in code
+    assert "0 1 2 0\\\\" not in code
+
+
+def test_clip3d_line_clips_to_axis_limits() -> None:
+    fig = plt.figure()
+    ax = cast("Axes3D", fig.add_subplot(111, projection="3d"))
+    ax.plot([-1.0, 2.0], [0.5, 0.5], [0.0, 0.0])
+    ax.set_xlim(0.0, 1.0)
+    ax.set_ylim(0.0, 1.0)
+    ax.set_zlim(-1.0, 1.0)
+
+    code = matplot2tikz.get_tikz_code(
+        fig, include_disclaimer=False, float_format=".8g", clip_3d="clip"
+    )
+    plt.close("all")
+
+    assert "0 0.5 0" in code
+    assert "1 0.5 0" in code
+    assert "-1 0.5 0" not in code
+
+
+def test_clip3d_line_preserves_contiguous_polyline() -> None:
+    fig = plt.figure()
+    ax = cast("Axes3D", fig.add_subplot(111, projection="3d"))
+    ax.plot(
+        [-1.0, 0.0, 0.25, 0.5, 0.75, 1.0, 2.0],
+        [0.5] * 7,
+        [0.5] * 7,
+    )
+    ax.set_xlim(0.0, 1.0)
+    ax.set_ylim(0.0, 1.0)
+    ax.set_zlim(0.0, 1.0)
+
+    code = matplot2tikz.get_tikz_code(
+        fig, include_disclaimer=False, float_format=".8g", clip_3d="clip"
+    )
+    plt.close("all")
+
+    assert code.count("\\addplot3 [") == 1
+    assert "0 0.5 0.5" in code
+    assert "0.25 0.5 0.5" in code
+    assert "1 0.5 0.5" in code
+    assert "-1 0.5 0.5" not in code
+    assert "2 0.5 0.5" not in code
+
+
+def test_clip3d_line_preserves_disconnected_polyline_runs() -> None:
+    fig = plt.figure()
+    ax = cast("Axes3D", fig.add_subplot(111, projection="3d"))
+    ax.plot(
+        [0.0, 1.0, np.nan, 1.0, 0.0],
+        [0.5, 0.5, np.nan, 0.5, 0.5],
+        [0.5, 0.5, np.nan, 0.5, 0.5],
+    )
+    ax.set_xlim(0.0, 1.0)
+    ax.set_ylim(0.0, 1.0)
+    ax.set_zlim(0.0, 1.0)
+
+    code = matplot2tikz.get_tikz_code(
+        fig, include_disclaimer=False, float_format=".8g", clip_3d="clip"
+    )
+    plt.close("all")
+
+    assert code.count("\\addplot3 [") == 2  # noqa: PLR2004
+
+
+def test_clip3d_line_uses_log_axis_coordinates() -> None:
+    fig = plt.figure()
+    ax = cast("Axes3D", fig.add_subplot(111, projection="3d"))
+    ax.plot([0.1, 10.0], [0.0, 2.0], [1.0, 1.0])
+    ax.set_xlim(1.0, 10.0)
+    ax.set_xscale("log")
+    ax.set_ylim(0.0, 2.0)
+    ax.set_zlim(0.1, 10.0)
+
+    code = matplot2tikz.get_tikz_code(
+        fig, include_disclaimer=False, float_format=".8g", clip_3d="clip"
+    )
+    plt.close("all")
+
+    assert "1 1 1" in code
+    assert "10 2 1" in code
+    assert "0.1 0 1" not in code
+
+
+def test_clip3d_scatter_hides_points_outside_limits() -> None:
+    fig = plt.figure()
+    ax = cast("Axes3D", fig.add_subplot(111, projection="3d"))
+    ax.scatter(
+        [0.2, 1.5, 0.8],
+        [0.2, 0.5, 1.8],
+        [0.2, 0.5, 0.8],
+        c=[1.0, 2.0, 3.0],
+        s=[10.0, 20.0, 30.0],
+    )
+    ax.set_xlim(0.0, 1.0)
+    ax.set_ylim(0.0, 1.0)
+    ax.set_zlim(0.0, 1.0)
+
+    code = matplot2tikz.get_tikz_code(
+        fig, include_disclaimer=False, float_format=".8g", clip_3d="hide"
+    )
+    plt.close("all")
+
+    assert "0.2 0.2 0.2 1" in code
+    assert "1.5 0.5 0.5 2" not in code
+    assert "0.8 1.8 0.8 3" not in code
+
+
+def test_clip3d_poly_collection_clips_polygon_vertices() -> None:
+    fig = plt.figure()
+    ax = cast("Axes3D", fig.add_subplot(111, projection="3d"))
+    collection = Poly3DCollection(
+        [np.array([[-0.5, 0.2, 0.2], [0.5, 0.2, 0.2], [0.5, 0.8, 0.2]])],
+        facecolor="tab:red",
+    )
+    ax.add_collection3d(collection)
+    ax.set_xlim(0.0, 1.0)
+    ax.set_ylim(0.0, 1.0)
+    ax.set_zlim(0.0, 1.0)
+
+    code = matplot2tikz.get_tikz_code(
+        fig, include_disclaimer=False, float_format=".8g", clip_3d="clip"
+    )
+    plt.close("all")
+
+    assert "0 0.2 0.2" in code
+    assert "-0.5 0.2 0.2" not in code
+
+
+def test_clip3d_surface_keeps_fully_inside_quad_patches() -> None:
+    fig = plt.figure()
+    ax = cast("Axes3D", fig.add_subplot(111, projection="3d"))
+    x = np.array([[0.0, 1.0], [0.0, 1.0]])
+    y = np.array([[0.0, 0.0], [1.0, 1.0]])
+    z = np.array([[0.0, 0.0], [0.0, 0.0]])
+    ax.plot_surface(x, y, z, linewidth=0.0, edgecolor="none")
+    ax.set_xlim(0.0, 1.0)
+    ax.set_ylim(0.0, 1.0)
+    ax.set_zlim(-1.0, 1.0)
+
+    code = matplot2tikz.get_tikz_code(
+        fig, include_disclaimer=False, float_format=".8g", clip_3d="clip"
+    )
+    plt.close("all")
+
+    assert "vertex count=4" in code
+    assert "vertex count=3" not in code
+
+
+def test_clip3d_surface_keeps_clipped_quad_patches() -> None:
+    fig = plt.figure()
+    ax = cast("Axes3D", fig.add_subplot(111, projection="3d"))
+    collection = Poly3DCollection(
+        [
+            np.array(
+                [
+                    [-1.0, 0.0, 0.0],
+                    [1.0, 0.0, 0.0],
+                    [1.0, 1.0, 0.0],
+                    [-1.0, 1.0, 0.0],
+                ]
+            )
+        ],
+        facecolor="tab:blue",
+        edgecolor="none",
+    )
+    ax.add_collection3d(collection)
+    ax.set_xlim(0.0, 1.0)
+    ax.set_ylim(0.0, 1.0)
+    ax.set_zlim(-1.0, 1.0)
+
+    code = matplot2tikz.get_tikz_code(
+        fig, include_disclaimer=False, float_format=".8g", clip_3d="clip"
+    )
+    plt.close("all")
+
+    assert "vertex count=4" in code
+    assert "vertex count=3" not in code
+    assert "0 0 0" in code
+    assert "-1 0 0" not in code
+
+
+def test_clip3d_shader_triangulates_collection_when_a_clipped_polygon_breaks() -> None:
+    fig = plt.figure()
+    ax = cast("Axes3D", fig.add_subplot(111, projection="3d"))
+    collection = Poly3DCollection(
+        [
+            np.array(
+                [
+                    [0.1, 0.1, 0.0],
+                    [0.4, 0.1, 1.0],
+                    [0.4, 0.4, 2.0],
+                    [0.1, 0.4, 3.0],
+                ]
+            ),
+            np.array(
+                [
+                    [-0.5, 0.2, 0.0],
+                    [0.8, 0.2, 2.0],
+                    [0.8, 0.8, 4.0],
+                    [0.2, 0.8, 6.0],
+                ]
+            ),
+        ],
+        edgecolor="none",
+    )
+    collection.set_array(np.array([0.0, 1.0]))
+    collection.set_cmap(plt.get_cmap("viridis"))
+    ax.add_collection3d(collection)
+    ax.set_xlim(0.0, 1.0)
+    ax.set_ylim(0.0, 1.0)
+    ax.set_zlim(0.0, 6.0)
+
+    code = matplot2tikz.get_tikz_code(
+        fig,
+        include_disclaimer=False,
+        float_format=".8g",
+        clip_3d="clip",
+        shader="interp",
+    )
+    plt.close("all")
+
+    assert "patch type=triangle" in code
+    assert "patch type=bilinear" not in code
+    assert "patch type=polygon" not in code
+    assert "shader=interp" in code
+    assert r"point meta=\thisrow{meta}" in code
+
+
+def test_clip3d_quiver_hide_keeps_semantic_quiver_for_inside_arrows() -> None:
+    fig = plt.figure()
+    ax = cast("Axes3D", fig.add_subplot(111, projection="3d"))
+    ax.quiver(
+        [0.2, 1.2],
+        [0.2, 0.2],
+        [0.2, 0.2],
+        [0.2, 0.2],
+        [0.0, 0.0],
+        [0.0, 0.0],
+    )
+    ax.set_xlim(0.0, 1.0)
+    ax.set_ylim(0.0, 1.0)
+    ax.set_zlim(0.0, 1.0)
+
+    code = matplot2tikz.get_tikz_code(
+        fig, include_disclaimer=False, float_format=".8g", clip_3d="hide"
+    )
+    plt.close("all")
+
+    assert r"quiver={u=\thisrow{u}, v=\thisrow{v}, w=\thisrow{w}}" in code
+    assert "0.2 0.2 0.2 0.2 0 0" in code
+    assert "1.2 0.2 0.2 0.2 0 0" not in code
+
+
+def test_clip3d_rejects_unknown_mode() -> None:
+    fig = plt.figure()
+    ax = cast("Axes3D", fig.add_subplot(111, projection="3d"))
+    ax.plot([0.0, 1.0], [0.0, 1.0], [0.0, 1.0])
+
+    with pytest.raises(ValueError, match="clip_3d"):
+        matplot2tikz.get_tikz_code(
+            fig,
+            include_disclaimer=False,
+            clip_3d=cast("Clip3DMode", "invalid"),
+        )
+    plt.close("all")
 
 
 def test_quiver3d() -> None:
