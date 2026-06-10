@@ -72,7 +72,7 @@ def plot_line_and_scatter() -> Figure:
         zz.ravel(),
         c=zz.ravel(),
         s=np.linspace(12.0, 52.0, zz.size),
-        cmap="plasma",
+        cmap="viridis",
         marker="D",
         edgecolors="black",
         linewidths=0.35,
@@ -130,7 +130,7 @@ def plot_surface_and_wireframe() -> Figure:
         levels=[-0.2, 0.0, 0.2],
         zdir="z",
         offset=-0.85,
-        cmap="plasma",
+        cmap="viridis",
         linewidths=0.6,
     )
     ax.set_xlabel("X")
@@ -266,7 +266,7 @@ def test_3d_grid_matches_mplot3d_default() -> None:
 def test_3d_view_uses_pgfplots_azimuth_convention() -> None:
     code = _tikz_code(plot_line_and_scatter)
 
-    assert "view={142}{28}" in code
+    assert "view={128}{28}" in code
 
 
 def test_strict_3d_ticks_use_matplotlib_locations() -> None:

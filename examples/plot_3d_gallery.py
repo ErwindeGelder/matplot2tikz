@@ -47,7 +47,7 @@ def line_scatter_text() -> Figure:
     ax.plot(x, 0.2 * np.sin(4 * x), 0.25 + 0.15 * np.cos(3 * x), "--", label="ridge")
     xs, ys = np.meshgrid(np.linspace(-0.5, 0.5, 4), np.linspace(-0.4, 0.4, 3))
     zs = 0.2 + xs**2 + 0.35 * ys**2
-    ax.scatter(xs.ravel(), ys.ravel(), zs.ravel(), c=zs.ravel(), s=32, cmap="plasma")
+    ax.scatter(xs.ravel(), ys.ravel(), zs.ravel(), c=zs.ravel(), s=32, cmap="viridis")
     ax.text(0.0, -0.55, 0.78, "3D text")
     ax.set_xlabel("X")
     ax.set_ylabel("Y")
@@ -94,7 +94,7 @@ def contour_projection() -> Figure:
     ax.set_xlabel("X")
     ax.set_ylabel("Y")
     ax.set_zlabel("Z")
-    ax.view_init(elev=25.0, azim=-45.0)
+    ax.view_init(elev=25.0, azim=105.0)
     return fig
 
 
@@ -176,7 +176,7 @@ def clipping_surface() -> Figure:
         levels=[-0.2, 0.0, 0.2],
         zdir="z",
         offset=-0.85,
-        cmap="plasma",
+        cmap="viridis",
         linewidths=0.6,
     )
     ax.set_xlabel("X")
@@ -214,7 +214,7 @@ def log_clipping() -> Figure:
     ax.set_xscale("log")
     ax.set_ylim(0.0, 2.0)
     ax.set_zlim(0.0, 2.0)
-    ax.set_xlabel("log X")
+    ax.set_xlabel(r"$\log_{10} \mathrm{X}$")
     ax.set_ylabel("Y")
     ax.set_zlabel("Z")
     ax.view_init(elev=24.0, azim=-35.0)
@@ -251,6 +251,7 @@ def main() -> None:
     for name, _title, plot, clip_3d in EXAMPLES:
         fig = plot()
         tex_path = TEX_DIR / f"{name}.tex"
+        fig.savefig(BUILD_DIR / f"{name}_reference.png", dpi=fig.dpi)
         matplot2tikz.save(
             tex_path,
             figure=fig,

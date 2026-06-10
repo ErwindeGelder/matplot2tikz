@@ -153,9 +153,8 @@ class MyAxes:
         if not self.is_3d:
             return
         ff = self.data.float_format
-        # PGFPlots measures the azimuth from the opposite horizontal reference
-        # direction compared to Matplotlib's mplot3d camera angle.
-        azim = 180 - self.obj.azim  # type: ignore[attr-defined]
+        # PGFPlots' 3D azimuth is rotated 90 degrees relative to mplot3d.
+        azim = self.obj.azim + 90  # type: ignore[attr-defined]
         elev = self.obj.elev  # type: ignore[attr-defined]
         self.data.current_axis_options.add("view={" + f"{azim:{ff}}" + "}{" + f"{elev:{ff}}" + "}")
 

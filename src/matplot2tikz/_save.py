@@ -423,22 +423,24 @@ class _ContentManager:
 
 def _draw_collection(data: TikzData, child: Collection) -> list[str]:
     if _mplot3d.is_quiver3d_collection(child):
-        return _mplot3d.draw_quiver3d(data, cast("Line3DCollection", child))
-    if _mplot3d.is_contour3d_collection(child):
-        return _mplot3d.draw_contour3d(data, child)
-    if isinstance(child, Poly3DCollection):
-        return _mplot3d.draw_poly3dcollection(data, child)
-    if isinstance(child, Path3DCollection):
-        return _mplot3d.draw_path3dcollection(data, child)
-    if isinstance(child, Line3DCollection):
-        return _mplot3d.draw_line3dcollection(data, child)
-    if isinstance(child, PathCollection):
-        return _path.draw_pathcollection(data, child)
-    if isinstance(child, LineCollection):
-        return _line2d.draw_linecollection(data, child)
-    if isinstance(child, QuadMesh):
-        return qmsh.draw_quadmesh(data, child)
-    return _patch.draw_patchcollection(data, child)
+        content = _mplot3d.draw_quiver3d(data, cast("Line3DCollection", child))
+    elif _mplot3d.is_contour3d_collection(child):
+        content = _mplot3d.draw_contour3d(data, child)
+    elif isinstance(child, Poly3DCollection):
+        content = _mplot3d.draw_poly3dcollection(data, child)
+    elif isinstance(child, Path3DCollection):
+        content = _mplot3d.draw_path3dcollection(data, child)
+    elif isinstance(child, Line3DCollection):
+        content = _mplot3d.draw_line3dcollection(data, child)
+    elif isinstance(child, PathCollection):
+        content = _path.draw_pathcollection(data, child)
+    elif isinstance(child, LineCollection):
+        content = _line2d.draw_linecollection(data, child)
+    elif isinstance(child, QuadMesh):
+        content = qmsh.draw_quadmesh(data, child)
+    else:
+        content = _patch.draw_patchcollection(data, child)
+    return content
 
 
 def _recurse(data: TikzData, obj: Artist) -> list[str]:
