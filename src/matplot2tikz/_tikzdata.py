@@ -8,6 +8,8 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from matplotlib.axes import Axes
 
+    from ._clip3d import Clip3DMode
+
 
 @dataclass
 class TikzData:
@@ -22,6 +24,8 @@ class TikzData:
     strict: bool = False
     standalone: bool = False
     is_in_groupplot_env: bool = False
+    clip_3d: Clip3DMode = "none"
+    shader: str = "none"
 
     dpi: int = 100
     font_size: float = 10.0
@@ -52,6 +56,7 @@ class TikzData:
     nb_keys: dict = field(default_factory=dict)
 
     current_mpl_axes: Axes | None = None
+    custom_colormap_id: int = 0
 
 
 class Flavors(enum.Enum):
@@ -101,6 +106,6 @@ class Flavors(enum.Enum):
             tikzlibs = ",".join(data.tikz_libs)
         return self.value[3].format(pgfplotslibs=pgfplotslibs, tikzlibs=tikzlibs)
 
-    def standalone(self, code: str) -> str:
+    def standalone(self, code: str, data: TikzData | None = None) -> str:
         docenv = self.value[2]
-        return f"{self.preamble()}{self.start(docenv)}\n{code}\n{self.end(docenv)}"
+        return f"{self.preamble(data)}{self.start(docenv)}\n{code}\n{self.end(docenv)}"

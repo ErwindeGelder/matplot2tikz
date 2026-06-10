@@ -1,0 +1,105 @@
+\begin{tikzpicture}
+
+\definecolor{crimson2143940}{RGB}{214,39,40}
+\definecolor{darkgray176}{RGB}{176,176,176}
+\definecolor{lightgray204}{RGB}{204,204,204}
+\definecolor{steelblue31119180}{RGB}{31,119,180}
+
+\begin{axis}[
+legend cell align={left},
+legend style={
+  fill opacity=0.8,
+  draw opacity=1,
+  text opacity=1,
+  at={(0.03,0.97)},
+  anchor=north west,
+  draw=lightgray204
+},
+view={128}{28},
+x grid style={darkgray176},
+xlabel={X},
+xmajorgrids,
+xmin=-1.05, xmax=1.05,
+xtick style={color=black},
+y grid style={darkgray176},
+ylabel={Y},
+ymajorgrids,
+ymin=-0.9, ymax=0.9,
+ytick style={color=black},
+z grid style={darkgray176},
+zlabel={Z},
+zmajorgrids,
+zmin=0, zmax=1.6,
+ztick style={color=black}
+]
+\addplot3 [
+  colormap/viridis,
+  draw=black,
+  line width=0.14pt,
+  mark=diamond*,
+  only marks,
+  scatter,
+  scatter src=explicit,
+  scatter/@pre marker code/.append style={/tikz/mark size=\perpointmarksize},
+  visualization depends on={\thisrow{sizedata} \as\perpointmarksize}
+]
+table [x=x, y=y, z=z, meta=colordata]{%
+x  y  z  colordata  sizedata
+-0.7 -0.6 0.44324575 0.44324575 1.95441
+-0.23333333 -0.6 0.24724575 0.24724575 2.230966
+0.23333333 -0.6 0.24724575 0.24724575 2.4768326
+0.7 -0.6 0.44324575 0.44324575 2.7004055
+-0.7 0 0.7705 0.7705 2.9068334
+-0.23333333 0 0.5745 0.5745 3.0995437
+0.23333333 0 0.5745 0.5745 3.2809544
+0.7 0 0.7705 0.7705 3.452847
+-0.7 0.6 0.44324575 0.44324575 3.6165789
+-0.23333333 0.6 0.24724575 0.24724575 3.7732126
+0.23333333 0.6 0.24724575 0.24724575 3.9235983
+0.7 0.6 0.44324575 0.44324575 4.0684289
+};
+\addlegendentry{samples}
+\addplot3 [semithick, crimson2143940, mark=*, mark size=3, mark options={solid}]
+table {%
+0.25 0 0
+0.25274034 0.12584973 0.083159806
+0.18963698 0.25111994 0.16631961
+0.063764716 0.3411111 0.24947942
+-0.10381671 0.36487789 0.33263922
+-0.27736024 0.30424969 0.41579903
+-0.41405455 0.16040559 0.49895883
+-0.47434732 -0.043954752 0.58211864
+-0.43252195 -0.26780625 0.66527844
+-0.28483103 -0.4600179 0.74843825
+-0.052906608 -0.57095322 0.83159806
+0.21881823 -0.56483495 0.91475786
+0.47154614 -0.4298711 0.99791767
+0.6448262 -0.18346887 1.0810775
+0.69079313 0.12913162 1.1642373
+0.58662156 0.44299604 1.2473971
+0.3420769 0.68698303 1.3305569
+2.4486161e-16 0.79977871 1.4137167
+};
+\addlegendentry{spiral}
+\addplot3 [semithick, steelblue31119180, dashed, mark=triangle*, mark size=3, mark options={solid}]
+table {%
+-0.8 -0.22732436 0.28757797
+-0.6 -0.24937375 0.36061058
+-0.4 -0.21036775 0.43104535
+-0.2 -0.11985638 0.48163738
+0 0 0.5
+0.2 0.11985638 0.48163738
+0.4 0.21036775 0.43104535
+0.6 0.24937375 0.36061058
+0.8 0.22732436 0.28757797
+};
+\addlegendentry{ridge}
+\draw (axis cs:0.28,-0.72,1.18) node[
+  scale=0.5,
+  anchor=base west,
+  text=black,
+  rotate=0.0
+]{3D text};
+\end{axis}
+
+\end{tikzpicture}

@@ -27,10 +27,10 @@ from ._util import get_legend_text, has_legend
 @dataclass
 class LineData:
     obj: Collection | Patch
-    ec: str | tuple | None = None  # edgecolor
+    ec: str | tuple | np.ndarray | None = None  # edgecolor
     ec_name: str | None = None
     ec_rgba: np.ndarray | None = None
-    fc: str | tuple | None = None  # facecolor
+    fc: str | tuple | np.ndarray | None = None  # facecolor
     fc_name: str | None = None
     fc_rgba: np.ndarray | None = None
     ls: str | tuple[float, Sequence[float] | None] | None = None  # linestyle
@@ -42,14 +42,24 @@ class LineData:
 class PathCollectionData:
     obj: PathCollection
     dd_strings: np.ndarray
-    draw_options: list
-    labels: list
-    table_options: list
+    draw_options: list[str]
+    labels: list[str]
+    table_options: list[str]
     is_contour: bool
+    command: str = "\\addplot"
     marker: str | None = None
     is_filled: bool = False
     add_individual_color_code: bool | None = False
     legend_text: str | None = None
+
+
+@dataclass
+class PathCollectionCoordinates:
+    offsets: np.ndarray
+    labels: list[str]
+    table_options: list[str]
+    is_contour: bool
+    command: str
 
 
 def draw_path(
@@ -162,31 +172,32 @@ def _check_x_is_date(data: TikzData) -> bool:
 
 def draw_pathcollection(data: TikzData, obj: PathCollection) -> list[str]:
     """Returns PGFPlots code for a number of patch objects."""
-    content = []
-    # gather data
-    dd = obj.get_offsets()
-    if not isinstance(dd, Iterable):
-        # No idea what to draw.
-        return []
-
-    path_collection_data = PathCollectionData(
-        obj=obj,
-        dd_strings=np.array(
-            [
-                [f"{val:{data.float_format}}" for val in row]  # type: ignore[str-bytes-safe]
-                for row in dd
-                if isinstance(row, Iterable)
-            ]
+    offsets = np.asarray(obj.get_offsets())
+    path_collection_data = make_pathcollection_data(
+        data,
+        obj,
+        PathCollectionCoordinates(
+            offsets=offsets,
+            labels=["x", "y"],
+            table_options=[],
+            is_contour=len(offsets) == 1,
+            command="\\addplot",
         ),
-        draw_options=["only marks"],
-        labels=["x", "y"],
-        table_options=[],
-        is_contour=isinstance(dd, Sized) and len(dd) == 1,
     )
+    return draw_pathcollection_data(data, path_collection_data)
+
+
+def draw_pathcollection_data(data: TikzData, path_collection_data: PathCollectionData) -> list[str]:
+    content = []
+    obj = path_collection_data.obj
     line_data = LineData(obj=obj)
 
     if obj.get_array() is not None:
         _draw_pathcollection_scatter_colormap(data, path_collection_data)
+        _draw_pathcollection_get_edgecolors(data, path_collection_data, line_data)
+        _draw_pathcollection_get_marker(path_collection_data)
+        _draw_pathcollection_get_linewidth(path_collection_data, line_data)
+        path_collection_data.is_filled = True
     else:
         # gather the draw options
         _draw_pathcollection_get_edgecolors(data, path_collection_data, line_data)
@@ -202,7 +213,7 @@ def draw_pathcollection(data: TikzData, obj: PathCollection) -> list[str]:
 
     for path in obj.get_paths():
         _draw_pathcollection_draw_contour(path, data, path_collection_data)
-        _draw_pathcollection_scatter_sizes(path_collection_data)
+        _draw_pathcollection_scatter_sizes(data, path_collection_data)
 
         # remove duplicates
         draw_options = sorted(set(path_collection_data.draw_options))
@@ -211,7 +222,7 @@ def draw_pathcollection(data: TikzData, obj: PathCollection) -> list[str]:
         len_row = sum(len(item) for item in draw_options)
         j0, j1, j2 = ("", ", ", "") if len_row < max_row_length else ("\n  ", ",\n  ", "\n")
         do = f" [{j0}{{}}{j2}]".format(j1.join(draw_options)) if draw_options else ""
-        content.append(f"\\addplot{do}\n")
+        content.append(f"{path_collection_data.command}{do}\n")
 
         if data.externals_search_path is not None:
             esp = data.externals_search_path
@@ -245,13 +256,46 @@ def draw_pathcollection(data: TikzData, obj: PathCollection) -> list[str]:
     return content
 
 
+def make_pathcollection_data(
+    data: TikzData,
+    obj: PathCollection,
+    coordinates: PathCollectionCoordinates,
+) -> PathCollectionData:
+    dd = coordinates.offsets
+    if not isinstance(dd, Iterable):
+        msg = f"Expected iterable path collection offsets, got {type(dd)}."
+        raise TypeError(msg)
+
+    dd_strings = []
+    for row in dd:
+        if not isinstance(row, Iterable):
+            msg = f"Expected iterable path collection offset row, got {row!r}."
+            raise TypeError(msg)
+        dd_strings.append([f"{val:{data.float_format}}" for val in row])
+
+    return PathCollectionData(
+        obj=obj,
+        dd_strings=np.array(dd_strings),
+        draw_options=["only marks"],
+        labels=coordinates.labels,
+        table_options=coordinates.table_options,
+        is_contour=coordinates.is_contour,
+        command=coordinates.command,
+    )
+
+
 def _draw_pathcollection_scatter_colormap(data: TikzData, pcd: PathCollectionData) -> None:
     obj_array = pcd.obj.get_array()
     if obj_array is not None:
-        pcd.dd_strings = np.column_stack([pcd.dd_strings, obj_array])
+        colordata = [f"{value:{data.float_format}}" for value in np.ma.getdata(obj_array)]
+        pcd.dd_strings = np.column_stack([pcd.dd_strings, colordata])
     pcd.labels.append("colordata")
     pcd.draw_options.append("scatter src=explicit")
-    pcd.table_options.extend(["x=x", "y=y", "meta=colordata"])
+    coordinate_options = [f"{label}={label}" for label in pcd.labels if label in {"x", "y", "z"}]
+    for option in coordinate_options:
+        if option not in pcd.table_options:
+            pcd.table_options.append(option)
+    pcd.table_options.append("meta=colordata")
     if pcd.obj.get_cmap():
         mycolormap, is_custom_cmap = _mpl_cmap2pgf_cmap(pcd.obj.get_cmap(), data)
         pcd.draw_options.append("scatter")
@@ -268,7 +312,7 @@ def _draw_pathcollection_get_edgecolors(
     else:
         if len(edgecolors) == 1:
             line_data.ec = edgecolors[0]
-        elif len(edgecolors) > 1:
+        elif len(edgecolors) == len(pcd.dd_strings):
             pcd.labels.append("draw")
 
             ec_strings = [
@@ -290,7 +334,7 @@ def _draw_pathcollection_get_facecolors(
         if len(facecolors) == 1:
             line_data.fc = facecolors[0]
             pcd.is_filled = True
-        elif len(facecolors) > 1:
+        elif len(facecolors) == len(pcd.dd_strings):
             pcd.labels.append("fill")
             fc_strings = [
                 ",".join(f"{item:{data.float_format}}" for item in row)
@@ -299,6 +343,12 @@ def _draw_pathcollection_get_facecolors(
             pcd.dd_strings = np.column_stack([pcd.dd_strings, fc_strings])
             pcd.add_individual_color_code = True
             pcd.is_filled = True
+
+
+def _draw_pathcollection_get_linewidth(pcd: PathCollectionData, line_data: LineData) -> None:
+    linewidths = np.atleast_1d(pcd.obj.get_linewidth())
+    if len(linewidths) == 1:
+        line_data.lw = float(linewidths[0])
 
 
 def _draw_pathcollection_add_individual_color(pcd: PathCollectionData) -> None:
@@ -387,11 +437,11 @@ def _draw_pathcollection_draw_contour(path: Path, data: TikzData, pcd: PathColle
         pcd.dd_strings = np.array(dd_strings[1:], dtype=object)
 
 
-def _draw_pathcollection_scatter_sizes(pcd: PathCollectionData) -> None:
+def _draw_pathcollection_scatter_sizes(data: TikzData, pcd: PathCollectionData) -> None:
     if len(pcd.obj.get_sizes()) == len(pcd.dd_strings):
         # See Pgfplots manual, chapter 4.25.
         # In Pgfplots, \mark size specifies radii, in matplotlib circle areas.
-        radii = np.sqrt(pcd.obj.get_sizes() / np.pi)
+        radii = [f"{radius:{data.float_format}}" for radius in np.sqrt(pcd.obj.get_sizes() / np.pi)]
         pcd.dd_strings = np.column_stack([pcd.dd_strings, radii])
         pcd.labels.append("sizedata")
         pcd.draw_options.extend(

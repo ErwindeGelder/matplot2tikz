@@ -100,13 +100,12 @@ def _tex_escape(text: str) -> str:
     # Not using \mathnormal instead since this looks odd for the latex cm font.
     text = _replace_mathdefault(text)
     text = text.replace("\N{MINUS SIGN}", r"\ensuremath{-}")
-    # Work around <https://github.com/matplotlib/matplotlib/issues/15493>
-    text = text.replace("&", r"\&")
-    text = text.replace("_", r"\_")
-    text = text.replace("%", r"\%")
-    # split text into normaltext and inline math parts
+    # Split text into normaltext and inline math parts
     parts = _split_math(text)
     for i, s in enumerate(parts):
         if i % 2:  # mathmode replacements
             parts[i] = rf"\(\displaystyle {s}\)"
+        else:
+            # Work around <https://github.com/matplotlib/matplotlib/issues/15493>
+            parts[i] = s.replace("&", r"\&").replace("_", r"\_").replace("%", r"\%")
     return "".join(parts)

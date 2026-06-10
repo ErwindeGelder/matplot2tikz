@@ -1,6 +1,8 @@
 *.egg-info/
 *.pdf
 *.png
+!examples/output/png/
+!examples/output/png/*.png
 *.pyc
 *.swp
 .cache/
