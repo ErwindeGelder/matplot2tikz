@@ -5,7 +5,7 @@ import sys
 import tempfile
 import warnings
 from pathlib import Path
-from typing import TYPE_CHECKING, TypedDict
+from typing import TYPE_CHECKING, Literal, TypedDict, cast
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -20,16 +20,25 @@ from matplotlib.offsetbox import AnchoredText
 from matplotlib.patches import Patch
 from matplotlib.spines import Spine
 from matplotlib.text import Text
+from mpl_toolkits.mplot3d import Axes3D
+from mpl_toolkits.mplot3d.art3d import Line3D, Line3DCollection, Path3DCollection, Poly3DCollection
 from typing_extensions import NotRequired, Unpack
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from matplotlib.artist import Artist
 
-from . import _axes, _legend, _line2d, _patch, _path, _text, _util
+    from ._clip3d import Clip3DMode
+
+
+from . import _axes, _legend, _line2d, _mplot3d, _patch, _path, _text, _util
 from . import _image as img
 from . import _quadmesh as qmsh
 from .__about__ import __version__
 from ._tikzdata import Flavors, TikzData
+
+ShaderMode = Literal["none", "interp"]
 
 # Set logger to be used to print some info
 LOGGER = logging.getLogger(__name__)
@@ -61,9 +70,17 @@ class TikzArgs(TypedDict):
     show_info: NotRequired[bool]
     include_disclaimer: NotRequired[bool]
     standalone: NotRequired[bool]
+    clip_3d: NotRequired[Clip3DMode]
+    shader: NotRequired[ShaderMode]
     float_format: NotRequired[str]
     table_row_sep: NotRequired[str]
     flavor: NotRequired[str]
+
+
+def _validate_clip_3d(clip_3d: str) -> None:
+    if clip_3d not in ("none", "hide", "clip"):
+        msg = 'clip_3d must be one of "none", "hide", or "clip".'
+        raise ValueError(msg)
 
 
 def get_tikz_code(  # noqa: PLR0913
@@ -87,6 +104,8 @@ def get_tikz_code(  # noqa: PLR0913
     show_info: bool = False,  # noqa: FBT001, FBT002
     include_disclaimer: bool = True,  # noqa: FBT001, FBT002
     standalone: bool = False,  # noqa: FBT001, FBT002
+    clip_3d: Clip3DMode = "none",
+    shader: ShaderMode = "none",
     float_format: str = ".15g",
     table_row_sep: str = "\n",
     flavor: str = "latex",
@@ -174,6 +193,16 @@ def get_tikz_code(  # noqa: PLR0913
     :param standalone: Include wrapper code for a standalone LaTeX file.
     :type standalone: bool
 
+    :param clip_3d: How 3D artists outside the 3D axis limits are handled.
+                    ``"none"`` preserves the current export behavior,
+                    ``"hide"`` removes artists outside the limits, and
+                    ``"clip"`` clips supported lines and polygons to the limits.
+    :type clip_3d: str
+
+    :param shader: Optional PGFPlots shader value for exported 3D patch plots,
+                   for example ``"interp"`` to emit ``shader=interp``.
+    :type shader: str
+
     :param float_format: Format for float entities. Default is ```".15g"```.
     :type float_format: str
 
@@ -202,6 +231,8 @@ def get_tikz_code(  # noqa: PLR0913
             f"Unsupported TeX flavor {flavor!r}. Please choose from {', '.join(map(repr, Flavors))}"
         )
         raise ValueError(msg) from None
+    _validate_clip_3d(clip_3d)
+
     data = TikzData(flavor=flavor_object)
 
     data.externalize_tables = externalize_tables
@@ -212,6 +243,8 @@ def get_tikz_code(  # noqa: PLR0913
     data.show_info = show_info
     data.strict = strict
     data.standalone = standalone
+    data.clip_3d = clip_3d
+    data.shader = shader
 
     data.axis_width, data.axis_height = axis_width, axis_height
     if tex_relative_path_to_data is not None:
@@ -242,8 +275,11 @@ def get_tikz_code(  # noqa: PLR0913
     if show_info:
         _print_pgfplot_libs_message(data)
 
+    mpl_figure = _get_figure(figure)
+    _finalize_figure_for_export(mpl_figure)
+
     # gather the file content
-    content = _recurse(data, _get_figure(figure))
+    content = _recurse(data, mpl_figure)
 
     # Check if there is still an open groupplot environment. This occurs if not
     # all of the group plot slots are used.
@@ -260,6 +296,21 @@ def _get_figure(figure: str | Figure) -> Figure:
         return figure
     msg = "Argument 'figure' must be a Figure or string 'gcf'."
     raise ValueError(msg)
+
+
+def _finalize_figure_for_export(figure: Figure) -> None:
+    axes3d = [ax for ax in figure.axes if isinstance(ax, Axes3D)]
+    if not axes3d:
+        return
+
+    renderer = figure.canvas.get_renderer()  # type: ignore[attr-defined]
+
+    for ax in axes3d:
+        # Axes3D updates aspect-dependent locator state during draw. Do the same
+        # narrowly, without running collection projection/sorting side effects.
+        ax._unstale_viewLim()  # noqa: SLF001
+        locator = ax.get_axes_locator()
+        ax.apply_aspect(locator(ax, renderer) if locator else None)
 
 
 def _set_filepath(data: TikzData, filepath: str | Path | None) -> None:
@@ -294,7 +345,7 @@ def save(
         f.write(code)
 
 
-def _generate_code(data: TikzData, content: list) -> str:
+def _generate_code(data: TikzData, content: Sequence[str]) -> str:
     # write disclaimer to the file header
     code = """"""
 
@@ -323,7 +374,7 @@ def _generate_code(data: TikzData, content: list) -> str:
 
     if data.standalone:
         # When using pdflatex, \\DeclareUnicodeCharacter is necessary.
-        code = data.flavor.standalone(code)
+        code = data.flavor.standalone(code, data)
     return code
 
 
@@ -332,7 +383,7 @@ def _tex_comment(comment: str) -> str:
     return "% " + str.replace(comment, "\n", "\n% ") + "\n"
 
 
-def _get_color_definitions(data: TikzData) -> list:
+def _get_color_definitions(data: TikzData) -> list[str]:
     """Returns the list of custom color definitions for the TikZ file."""
     # sort by key
     sorted_keys = sorted(data.custom_colors.keys(), key=lambda x: x.lower())
@@ -356,14 +407,14 @@ class _ContentManager:
     def __init__(self) -> None:
         self._content: dict[float, list[str]] = {}
 
-    def extend(self, content: list, zorder: float) -> None:
+    def extend(self, content: Sequence[str], zorder: float) -> None:
         """Extends with a list and a z-order."""
         if zorder not in self._content:
             self._content[zorder] = []
         self._content[zorder].extend(content)
 
-    def flatten(self) -> list:
-        content_out = []
+    def flatten(self) -> list[str]:
+        content_out: list[str] = []
         all_z = sorted(self._content.keys())
         for z in all_z:
             content_out.extend(self._content[z])
@@ -371,16 +422,28 @@ class _ContentManager:
 
 
 def _draw_collection(data: TikzData, child: Collection) -> list[str]:
-    if isinstance(child, PathCollection):
-        return _path.draw_pathcollection(data, child)
-    if isinstance(child, LineCollection):
-        return _line2d.draw_linecollection(data, child)
-    if isinstance(child, QuadMesh):
-        return qmsh.draw_quadmesh(data, child)
-    return _patch.draw_patchcollection(data, child)
+    if _mplot3d.is_quiver3d_collection(child):
+        content = _mplot3d.draw_quiver3d(data, cast("Line3DCollection", child))
+    elif _mplot3d.is_contour3d_collection(child):
+        content = _mplot3d.draw_contour3d(data, child)
+    elif isinstance(child, Poly3DCollection):
+        content = _mplot3d.draw_poly3dcollection(data, child)
+    elif isinstance(child, Path3DCollection):
+        content = _mplot3d.draw_path3dcollection(data, child)
+    elif isinstance(child, Line3DCollection):
+        content = _mplot3d.draw_line3dcollection(data, child)
+    elif isinstance(child, PathCollection):
+        content = _path.draw_pathcollection(data, child)
+    elif isinstance(child, LineCollection):
+        content = _line2d.draw_linecollection(data, child)
+    elif isinstance(child, QuadMesh):
+        content = qmsh.draw_quadmesh(data, child)
+    else:
+        content = _patch.draw_patchcollection(data, child)
+    return content
 
 
-def _recurse(data: TikzData, obj: Artist) -> list:
+def _recurse(data: TikzData, obj: Artist) -> list[str]:
     """Iterates over all children of the current object and gathers the contents.
 
     Content is returned.
@@ -418,6 +481,7 @@ def _recurse(data: TikzData, obj: Artist) -> list:
 
         else:
             for child_type, process_func in (
+                (Line3D, _mplot3d.draw_line3d),
                 (Line2D, _line2d.draw_line2d),
                 (AxesImage, img.draw_image),
                 (Patch, _patch.draw_patch),
@@ -437,6 +501,7 @@ def _recurse(data: TikzData, obj: Artist) -> list:
 
 
 def _process_axes(data: TikzData, obj: Axes, content: _ContentManager) -> None:
+    data.current_mpl_axes = obj
     ax = _axes.MyAxes(data, obj)
 
     if ax.is_colorbar:
@@ -445,8 +510,6 @@ def _process_axes(data: TikzData, obj: Axes, content: _ContentManager) -> None:
     # add extra axis options
     if data.extra_axis_parameters:
         data.current_axis_options.update(data.extra_axis_parameters)
-
-    data.current_mpl_axes = obj
 
     # Run through the child objects, gather the content.
     children_content = _recurse(data, obj)

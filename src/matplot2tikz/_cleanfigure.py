@@ -251,7 +251,7 @@ def _clean_collections(
     cfd.has_lines = False
     data = _simplify_line(cfd)
     data = _limit_precision(cfd.axes, data, cfd.scale_precision)
-    collection.set_offsets(data)
+    _update_collection_data(collection, data)
 
 
 def _is_step(linehandle: Line2D | art3d.Line3D) -> bool:
@@ -341,6 +341,17 @@ def _update_line_data(linehandle: Line2D | art3d.Line3D, data: np.ndarray) -> No
         x_data, y_data = _split_data_2d(data)
         linehandle.set_xdata(x_data)
         linehandle.set_ydata(y_data)
+
+
+def _update_collection_data(
+    collection: PathCollection | art3d.Path3DCollection, data: np.ndarray
+) -> None:
+    if isinstance(collection, art3d.Path3DCollection):
+        x_data, y_data, z_data = _split_data_3d(data)
+        collection._offsets3d = (x_data, y_data, z_data)  # noqa: SLF001
+        collection.set_offsets(_stack_data_2d(x_data, y_data))
+    else:
+        collection.set_offsets(data)
 
 
 def _split_data_2d(data: np.ndarray) -> tuple[np.ndarray, np.ndarray]:

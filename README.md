@@ -132,7 +132,24 @@ Tweaking the plot is straightforward and can be done as part of your TeX work fl
 great examples of how to make your plot look even better.
 
 Of course, not all figures produced by matplotlib can be converted without error.
-Notably, [3D plots don't work](https://github.com/matplotlib/matplotlib/issues/7243).
+3D plots are supported for the common mplot3d artists exported by matplot2tikz,
+including 3D lines, scatter plots, surfaces, wireframes, contours, bar charts,
+quiver plots, custom ticks, and optional 3D axis-limit clipping.
+
+### 3D examples
+
+The example generator in [`examples`](examples) writes standalone PGFPlots files to
+`examples/output/tex`.
+The previews below were compiled with `pdflatex` and rendered from the generated
+PDFs.
+
+| Line, scatter, text | Surface and wireframe | Contours |
+| --- | --- | --- |
+| ![3D line, scatter, and text](examples/output/png/line_scatter_text.png) | ![3D surface and wireframe](examples/output/png/surface_wireframe.png) | ![3D contour and filled contour plot](examples/output/png/contour_projection.png) |
+| 3D bars with custom ticks | Semantic quiver | Log-scale clipping |
+| ![3D bar chart with custom tick labels](examples/output/png/bar3d.png) | ![Semantic 3D quiver plot](examples/output/png/quiver3d.png) | ![Log-scale 3D clipping](examples/output/png/log_clipping.png) |
+| No clipping | Hide outside limits | Clip to limits |
+| ![Unclipped 3D surface and wireframe](examples/output/png/clipping_none.png) | ![3D surface and wireframe with outside geometry hidden](examples/output/png/clipping_hide.png) | ![3D surface and wireframe clipped to axis limits](examples/output/png/clipping_clip.png) |
 
 ## Installation
 
