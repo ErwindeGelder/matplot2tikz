@@ -44,7 +44,9 @@ def draw_image(data: TikzData, obj: AxesImage) -> list[str]:
             img_array = np.flipud(img_array)
 
         # Convert mpl image to PIL
-        if img_array.dtype != np.uint8:
+        if img_array.dtype == np.uint8:
+            img_uint8 = img_array
+        else:
             img_uint8 = np.uint8(img_array * 255)
         image = PIL.Image.fromarray(img_uint8)
 
